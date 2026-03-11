@@ -48,28 +48,15 @@ function App() {
 
   return (
     <main className="page-shell">
-      <section className="hero-panel">
-        <div className="brand-mark">MedSim</div>
-        <p className="eyebrow">Учебная ролевая симуляция для медицинской организации</p>
-        <h1>Старт игры начинается с правильного входа в систему.</h1>
-        <p className="hero-copy">
-          Игроки указывают имя и свою должность в больнице, а ведущий и
-          суперпользователь входят по логину и паролю.
-        </p>
-
-        <div className="hero-notes">
-          <article>
-            <span>01</span>
-            <p>Роль в игре назначается отдельно, чтобы исключить совпадение с реальной должностью.</p>
-          </article>
-          <article>
-            <span>02</span>
-            <p>Вход ведущего и суперпользователя отделён от потока обычных участников.</p>
-          </article>
-        </div>
-      </section>
-
       <section className="form-panel">
+        <div className="panel-header">
+          <div className="brand-mark">MedSim</div>
+          <div className="panel-copy">
+            <p className="eyebrow">Вход в систему симуляции</p>
+            <h1>Регистрация и авторизация</h1>
+          </div>
+        </div>
+
         <div className="mode-switch" role="tablist" aria-label="Тип входа">
           <button
             type="button"
