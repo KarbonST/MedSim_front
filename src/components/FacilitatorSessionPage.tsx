@@ -1,4 +1,5 @@
 import type { ChangeEvent, FormEvent } from 'react';
+import { useState } from 'react';
 import BrandHeader from './BrandHeader';
 import SessionSetupPanel from './SessionSetupPanel';
 import type {
@@ -12,6 +13,7 @@ interface FacilitatorSessionPageProps {
   sessionCode: string;
   loading: boolean;
   sessionsLoading: boolean;
+  creatingSession: boolean;
   actionSessionCode: string;
   setupLoading: boolean;
   randomAssignmentLoading: boolean;
@@ -23,6 +25,7 @@ interface FacilitatorSessionPageProps {
   onLookupSession: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onRefresh: () => void | Promise<void>;
   onRefreshSessions: () => void | Promise<void>;
+  onCreateSession: (sessionName: string, sessionCode: string) => Promise<boolean>;
   onOpenSession: (sessionCode: string) => void | Promise<void>;
   onSaveStages: (
     sessionCode: string,
@@ -45,6 +48,7 @@ function FacilitatorSessionPage({
   sessionCode,
   loading,
   sessionsLoading,
+  creatingSession,
   actionSessionCode,
   setupLoading,
   randomAssignmentLoading,
@@ -56,6 +60,7 @@ function FacilitatorSessionPage({
   onLookupSession,
   onRefresh,
   onRefreshSessions,
+  onCreateSession,
   onOpenSession,
   onSaveStages,
   onAssignRandomRoles,
@@ -65,8 +70,39 @@ function FacilitatorSessionPage({
   onDeleteSession,
   onBack,
 }: FacilitatorSessionPageProps) {
+  const [creationForm, setCreationForm] = useState({
+    sessionName: '',
+    sessionCode: '',
+  });
+
   const handleSessionCodeChange = (event: ChangeEvent<HTMLInputElement>): void => {
     onSessionCodeChange(event.target.value);
+  };
+
+  const handleCreationFormChange =
+    (field: 'sessionName' | 'sessionCode') =>
+    (event: ChangeEvent<HTMLInputElement>): void => {
+      setCreationForm((current) => ({ ...current, [field]: event.target.value }));
+    };
+
+  const handleCreateSession = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+
+    const sessionName = creationForm.sessionName.trim();
+    const nextSessionCode = creationForm.sessionCode.trim();
+
+    if (!sessionName || !nextSessionCode) {
+      return;
+    }
+
+    const created = await onCreateSession(sessionName, nextSessionCode);
+
+    if (created) {
+      setCreationForm({
+        sessionName: '',
+        sessionCode: '',
+      });
+    }
   };
 
   const hasParticipants = Boolean(session?.participants.length);
@@ -85,6 +121,51 @@ function FacilitatorSessionPage({
           <h2>{login}</h2>
         </div>
         <span className="status-pill">Ведущий</span>
+      </div>
+
+      <div className="participants-panel session-create-panel">
+        <div className="participants-panel-header">
+          <div>
+            <p className="section-kicker">Новая сессия</p>
+            <h3>Создание игровой комнаты</h3>
+          </div>
+        </div>
+
+        <form className="session-create-form" onSubmit={handleCreateSession}>
+          <label className="field">
+            <span>Название сессии</span>
+            <input
+              type="text"
+              placeholder="Например, Приёмное отделение"
+              value={creationForm.sessionName}
+              onChange={handleCreationFormChange('sessionName')}
+            />
+          </label>
+
+          <label className="field">
+            <span>Код сессии</span>
+            <input
+              type="text"
+              placeholder="Например, WARD-12"
+              value={creationForm.sessionCode}
+              onChange={handleCreationFormChange('sessionCode')}
+            />
+          </label>
+
+          <button
+            type="submit"
+            className="primary-button"
+            disabled={creatingSession || !creationForm.sessionName.trim() || !creationForm.sessionCode.trim()}
+          >
+            {creatingSession ? 'Создание...' : 'Создать сессию'}
+          </button>
+        </form>
+
+        <div className="waiting-note compact-note">
+          <p>
+            Игроки смогут подключаться только к тем сессиям, которые ведущий создал заранее.
+          </p>
+        </div>
       </div>
 
       <div className="participants-panel sessions-board">
@@ -163,7 +244,7 @@ function FacilitatorSessionPage({
           </div>
         ) : (
           <div className="waiting-note facilitator-empty-state">
-            <p>Сессий пока нет. Они появятся после подключения игроков.</p>
+            <p>Сессий пока нет. Сначала создайте игровую комнату вручную.</p>
           </div>
         )}
       </div>

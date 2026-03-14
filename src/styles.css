@@ -752,3 +752,43 @@ button {
     gap: 8px;
   }
 }
+
+.available-player-sessions-panel {
+  gap: 18px;
+}
+
+.player-available-session-cards {
+  grid-template-columns: 1fr;
+}
+
+.session-select-card {
+  width: 100%;
+  border: 1px solid #cfe2d5;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.session-select-card.selected {
+  border-color: #22c55e;
+}
+
+.session-select-card:hover {
+  border-color: #8bc5a0;
+}
+
+.session-create-panel {
+  gap: 18px;
+}
+
+.session-create-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr) minmax(220px, 0.8fr);
+  gap: 12px;
+  align-items: end;
+}
+
+@media (max-width: 900px) {
+  .session-create-form {
+    grid-template-columns: 1fr;
+  }
+}

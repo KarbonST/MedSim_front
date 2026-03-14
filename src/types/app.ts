@@ -25,6 +25,13 @@ export interface StaffProfile {
   systemRole: string;
 }
 
+export interface AvailablePlayerSession {
+  sessionId: number;
+  sessionCode: string;
+  sessionName: string;
+  participantCount: number;
+}
+
 export interface PlayerSessionJoinRequest {
   displayName: string;
   hospitalPosition: string;
@@ -65,6 +72,11 @@ export interface GameSessionStageSettingsRequest {
   stages: SessionStageSetting[];
 }
 
+export interface GameSessionCreateRequest {
+  sessionCode: string;
+  sessionName: string;
+}
+
 export interface GameSessionRoleAssignmentRequest {
   gameRole: string;
 }
@@ -103,4 +115,10 @@ export interface SessionsListState {
   loading: boolean;
   error: string;
   sessions: GameSessionSummary[];
+}
+
+export interface AvailablePlayerSessionsState {
+  loading: boolean;
+  error: string;
+  sessions: AvailablePlayerSession[];
 }

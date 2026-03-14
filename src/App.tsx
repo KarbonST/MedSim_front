@@ -8,6 +8,7 @@ import SessionWaitingRoom from './components/SessionWaitingRoom';
 import StaffLoginForm from './components/StaffLoginForm';
 import { accessProfiles } from './constants/accessProfiles';
 import { playerRoles } from './constants/playerRoles';
+import { useAvailablePlayerSessions } from './hooks/useAvailablePlayerSessions';
 import { useFacilitatorSessionOverview } from './hooks/useFacilitatorSessionOverview';
 import { useGameSessionsList } from './hooks/useGameSessionsList';
 import { usePlayerSession } from './hooks/usePlayerSession';
@@ -18,6 +19,7 @@ import {
 import {
   assignManualGameRole,
   assignRandomGameRoles,
+  createGameSession,
   deleteGameSession,
   finishGameSession,
   saveGameSessionStages,
@@ -56,12 +58,15 @@ function App() {
   const [facilitatorSetupLoading, setFacilitatorSetupLoading] = useState(false);
   const [facilitatorRandomRoleLoading, setFacilitatorRandomRoleLoading] = useState(false);
   const [facilitatorRoleParticipantId, setFacilitatorRoleParticipantId] = useState<number | null>(null);
+  const [creatingSession, setCreatingSession] = useState(false);
   const [isFacilitatorWorkspaceOpen, setIsFacilitatorWorkspaceOpen] = useState(
     persistedState.facilitator.isWorkspaceOpen && Boolean(persistedState.facilitator.authHeader),
   );
   const { joinState, joinSession, resetSession } = usePlayerSession(
     persistedState.playerSession,
   );
+  const { availableSessionsState, loadAvailableSessions, resetAvailableSessions } =
+    useAvailablePlayerSessions();
   const { overviewState, loadSession, resetOverview } = useFacilitatorSessionOverview();
   const { sessionsState, loadSessions, resetSessions } = useGameSessionsList();
 
@@ -89,6 +94,39 @@ function App() {
     staffAuthHeader,
     isFacilitatorWorkspaceOpen,
     facilitatorSessionCode,
+  ]);
+
+  useEffect(() => {
+    if (mode !== 'player' || joinState.session) {
+      return;
+    }
+
+    void loadAvailableSessions();
+  }, [mode, joinState.session]);
+
+  useEffect(() => {
+    if (
+      joinState.session ||
+      !playerForm.sessionCode ||
+      availableSessionsState.loading ||
+      availableSessionsState.error
+    ) {
+      return;
+    }
+
+    const sessionStillAvailable = availableSessionsState.sessions.some(
+      (session) => session.sessionCode === playerForm.sessionCode,
+    );
+
+    if (!sessionStillAvailable) {
+      setPlayerForm((current) => ({ ...current, sessionCode: '' }));
+    }
+  }, [
+    joinState.session,
+    playerForm.sessionCode,
+    availableSessionsState.loading,
+    availableSessionsState.error,
+    availableSessionsState.sessions,
   ]);
 
   useEffect(() => {
@@ -223,7 +261,45 @@ function App() {
     }
 
     setFacilitatorActionError('');
-    await loadSessions(staffAuthHeader);
+    await Promise.all([loadSessions(staffAuthHeader), loadAvailableSessions()]);
+  };
+
+  const handleCreateSession = async (
+    sessionName: string,
+    sessionCode: string,
+  ): Promise<boolean> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return false;
+    }
+
+    setCreatingSession(true);
+    setFacilitatorActionError('');
+
+    try {
+      const createdSession = await createGameSession(
+        {
+          sessionName,
+          sessionCode,
+        },
+        staffAuthHeader,
+      );
+
+      setFacilitatorSessionCode(createdSession.sessionCode);
+      await Promise.all([
+        loadSessions(staffAuthHeader),
+        loadSession(createdSession.sessionCode, staffAuthHeader),
+        loadAvailableSessions(),
+      ]);
+      return true;
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось создать игровую сессию.',
+      );
+      return false;
+    } finally {
+      setCreatingSession(false);
+    }
   };
 
   const handleOpenSession = async (sessionCode: string): Promise<void> => {
@@ -246,6 +322,7 @@ function App() {
     await Promise.all([
       loadSessions(staffAuthHeader),
       loadSession(sessionCode, staffAuthHeader),
+      loadAvailableSessions(),
     ]);
   };
 
@@ -392,7 +469,7 @@ function App() {
 
     try {
       await deleteGameSession(sessionCode, staffAuthHeader);
-      await loadSessions(staffAuthHeader);
+      await Promise.all([loadSessions(staffAuthHeader), loadAvailableSessions()]);
 
       if (
         overviewState.session?.sessionCode === sessionCode ||
@@ -413,6 +490,7 @@ function App() {
   const handleResetPlayerFlow = (): void => {
     resetSession();
     setPlayerForm((current) => ({ ...current, sessionCode: '' }));
+    void loadAvailableSessions();
   };
 
   const handleCloseFacilitatorWorkspace = (): void => {
@@ -424,10 +502,12 @@ function App() {
     setFacilitatorSetupLoading(false);
     setFacilitatorRandomRoleLoading(false);
     setFacilitatorRoleParticipantId(null);
+    setCreatingSession(false);
     setStaffError('');
     setStaffForm((current) => ({ ...current, password: '' }));
     resetOverview();
     resetSessions();
+    resetAvailableSessions();
   };
 
   const handleModeChange = (nextMode: Mode): void => {
@@ -435,6 +515,7 @@ function App() {
     setStaffError('');
   };
 
+  const playerError = joinState.error || availableSessionsState.error;
   const facilitatorError = facilitatorActionError || overviewState.error || sessionsState.error;
 
   return (
@@ -448,6 +529,7 @@ function App() {
             sessionCode={facilitatorSessionCode}
             loading={overviewState.loading}
             sessionsLoading={sessionsState.loading}
+            creatingSession={creatingSession}
             actionSessionCode={facilitatorActionCode}
             setupLoading={facilitatorSetupLoading}
             randomAssignmentLoading={facilitatorRandomRoleLoading}
@@ -459,6 +541,7 @@ function App() {
             onLookupSession={handleLookupSession}
             onRefresh={handleRefreshSession}
             onRefreshSessions={handleRefreshSessions}
+            onCreateSession={handleCreateSession}
             onOpenSession={handleOpenSession}
             onSaveStages={handleSaveStages}
             onAssignRandomRoles={handleAssignRandomRoles}
@@ -480,10 +563,13 @@ function App() {
             {mode === 'player' ? (
               <PlayerEntryForm
                 formState={playerForm}
+                availableSessions={availableSessionsState.sessions}
+                sessionsLoading={availableSessionsState.loading}
                 onChange={updatePlayerForm}
+                onRefreshSessions={loadAvailableSessions}
                 onSubmit={handlePlayerSubmit}
                 loading={joinState.loading}
-                error={joinState.error}
+                error={playerError}
               />
             ) : (
               <StaffLoginForm
