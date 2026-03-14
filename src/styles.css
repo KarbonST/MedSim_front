@@ -21,6 +21,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 button,
@@ -35,6 +36,7 @@ button {
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .page-shell {
@@ -42,6 +44,7 @@ button {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 24px;
 }
 
@@ -168,6 +171,7 @@ button {
   border: 1px solid #c7dfcf;
   border-radius: 16px;
   padding: 16px 18px;
+  min-height: 56px;
   background: #ffffff;
   color: #163127;
   outline: none;
@@ -232,6 +236,7 @@ button {
 .participants-panel h3,
 .session-card strong {
   color: #163127;
+  overflow-wrap: anywhere;
 }
 
 .access-card.active,
@@ -334,6 +339,7 @@ button {
 .session-card-metrics {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -354,6 +360,10 @@ button {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.participant-card-header > div {
+  min-width: 0;
 }
 
 .participant-index {
@@ -388,6 +398,7 @@ button {
 .participant-details dd {
   font-size: 1rem;
   color: #244437;
+  overflow-wrap: anywhere;
 }
 
 .primary-button,
@@ -396,7 +407,8 @@ button {
   border: 0;
   border-radius: 16px;
   padding: 16px 18px;
-  font-weight: 700;
+  min-height: 56px;
+  font-weight: 700
   transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
 }
 
@@ -548,6 +560,7 @@ button {
 .participant-role-subtitle {
   margin: 0;
   color: #5a7367;
+  overflow-wrap: anywhere;
 }
 
 .stage-editor-grid,
@@ -587,5 +600,155 @@ button {
 
   .stage-count-field {
     max-width: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-shell {
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  .form-panel {
+    width: 100%;
+    padding: 24px;
+    border-radius: 24px;
+  }
+
+  .mode-switch {
+    grid-template-columns: 1fr;
+  }
+
+  .mode-button {
+    min-height: 56px;
+  }
+
+  .brand-mark {
+    width: 100%;
+    text-align: center;
+  }
+
+  .participants-panel,
+  .waiting-note,
+  .room-hero {
+    padding: 18px;
+  }
+
+  .participant-card,
+  .session-card,
+  .stage-editor-card,
+  .info-card {
+    padding: 16px;
+  }
+
+  .participant-card-header {
+    align-items: flex-start;
+  }
+
+  .setup-toolbar .primary-button,
+  .participant-role-form .primary-button,
+  .session-room > .secondary-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-shell {
+    padding: 12px;
+  }
+
+  .form-panel {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .panel-copy h1,
+  .room-hero h2,
+  .form-heading h2 {
+    font-size: 1.6rem;
+    line-height: 1.02;
+  }
+
+  .panel-header,
+  .entry-form,
+  .session-room,
+  .session-setup-stack {
+    gap: 16px;
+  }
+
+  .eyebrow,
+  .section-kicker,
+  .participant-details dt {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+  }
+
+  .field input,
+  .field select,
+  .primary-button,
+  .secondary-button,
+  .danger-button {
+    padding: 14px 16px;
+    min-height: 52px;
+  }
+
+  .field select {
+    padding-right: 42px;
+    background-position:
+      calc(100% - 20px) calc(50% - 3px),
+      calc(100% - 14px) calc(50% - 3px);
+  }
+
+  .room-grid,
+  .participants-list,
+  .session-cards,
+  .access-cards,
+  .stage-editors,
+  .stage-editor-grid,
+  .participant-role-form,
+  .session-card-actions--four,
+  .session-lookup {
+    grid-template-columns: 1fr;
+  }
+
+  .participants-panel,
+  .waiting-note,
+  .room-hero {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .participant-card,
+  .session-card,
+  .stage-editor-card,
+  .info-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .participants-panel h3 {
+    font-size: 1.25rem;
+  }
+
+  .participant-card-header strong,
+  .info-card strong,
+  .session-card strong {
+    font-size: 1rem;
+    line-height: 1.25;
+  }
+
+  .participant-role-subtitle,
+  .stage-editor-description,
+  .stage-editor-hint,
+  .waiting-note p,
+  .form-heading p:last-child {
+    font-size: 0.95rem;
+    line-height: 1.45;
+  }
+
+  .setup-toolbar,
+  .setup-badge-row,
+  .session-card-metrics {
+    gap: 8px;
   }
 }
