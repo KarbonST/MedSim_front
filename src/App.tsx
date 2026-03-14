@@ -235,27 +235,6 @@ function App() {
     }
   };
 
-  const handleLookupSession = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
-    event.preventDefault();
-
-    if (!staffAuthHeader) {
-      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
-      return;
-    }
-
-    setFacilitatorActionError('');
-    await loadSession(facilitatorSessionCode, staffAuthHeader);
-  };
-
-  const handleRefreshSession = async (): Promise<void> => {
-    if (!facilitatorSessionCode.trim() || !staffAuthHeader) {
-      return;
-    }
-
-    setFacilitatorActionError('');
-    await loadSession(facilitatorSessionCode, staffAuthHeader);
-  };
-
   const handleRefreshSessions = async (): Promise<void> => {
     if (!staffAuthHeader) {
       setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
@@ -268,7 +247,6 @@ function App() {
 
   const handleCreateSession = async (
     sessionName: string,
-    sessionCode: string,
   ): Promise<boolean> => {
     if (!staffAuthHeader) {
       setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
@@ -282,7 +260,6 @@ function App() {
       const createdSession = await createGameSession(
         {
           sessionName,
-          sessionCode,
         },
         staffAuthHeader,
       );
@@ -556,7 +533,6 @@ function App() {
         ) : isFacilitatorWorkspaceOpen ? (
           <FacilitatorSessionPage
             login={staffForm.login.trim()}
-            sessionCode={facilitatorSessionCode}
             loading={overviewState.loading}
             sessionsLoading={sessionsState.loading}
             creatingSession={creatingSession}
@@ -568,9 +544,6 @@ function App() {
             error={facilitatorError}
             session={overviewState.session}
             sessions={sessionsState.sessions}
-            onSessionCodeChange={setFacilitatorSessionCode}
-            onLookupSession={handleLookupSession}
-            onRefresh={handleRefreshSession}
             onRefreshSessions={handleRefreshSessions}
             onCreateSession={handleCreateSession}
             onRenameSession={handleRenameSession}

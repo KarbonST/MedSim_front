@@ -73,7 +73,6 @@ export interface GameSessionStageSettingsRequest {
 }
 
 export interface GameSessionCreateRequest {
-  sessionCode: string;
   sessionName: string;
 }
 

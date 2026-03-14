@@ -352,6 +352,10 @@ button {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.session-card-actions--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .participant-card {
   gap: 14px;
 }
@@ -467,7 +471,8 @@ button {
     grid-template-columns: 1fr;
   }
 
-  .session-card-actions--four {
+  .session-card-actions--four,
+  .session-card-actions--three {
     grid-template-columns: 1fr;
   }
 }
@@ -787,25 +792,38 @@ button {
   align-items: end;
 }
 
+.session-create-form--simple {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 @media (max-width: 900px) {
   .session-create-form {
     grid-template-columns: 1fr;
   }
 }
 
-.session-rename-panel {
+.session-card--interactive {
+  cursor: pointer;
+}
+
+.session-rename-inline-panel {
   gap: 18px;
 }
 
-.session-rename-form {
+.session-rename-inline-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: end;
 }
 
+.session-lookup-name-field {
+  min-width: 0;
+}
+
 @media (max-width: 900px) {
-  .session-rename-form {
+  .session-create-form--simple,
+  .session-rename-inline-form {
     grid-template-columns: 1fr;
   }
 }

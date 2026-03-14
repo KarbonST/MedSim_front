@@ -10,7 +10,6 @@ import type {
 
 interface FacilitatorSessionPageProps {
   login: string;
-  sessionCode: string;
   loading: boolean;
   sessionsLoading: boolean;
   creatingSession: boolean;
@@ -22,11 +21,8 @@ interface FacilitatorSessionPageProps {
   error: string;
   session: GameSessionParticipantsResponse | null;
   sessions: GameSessionSummary[];
-  onSessionCodeChange: (value: string) => void;
-  onLookupSession: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
-  onRefresh: () => void | Promise<void>;
   onRefreshSessions: () => void | Promise<void>;
-  onCreateSession: (sessionName: string, sessionCode: string) => Promise<boolean>;
+  onCreateSession: (sessionName: string) => Promise<boolean>;
   onRenameSession: (sessionCode: string, sessionName: string) => Promise<boolean>;
   onOpenSession: (sessionCode: string) => void | Promise<void>;
   onSaveStages: (
@@ -47,7 +43,6 @@ interface FacilitatorSessionPageProps {
 
 function FacilitatorSessionPage({
   login,
-  sessionCode,
   loading,
   sessionsLoading,
   creatingSession,
@@ -59,9 +54,6 @@ function FacilitatorSessionPage({
   error,
   session,
   sessions,
-  onSessionCodeChange,
-  onLookupSession,
-  onRefresh,
   onRefreshSessions,
   onCreateSession,
   onRenameSession,
@@ -74,49 +66,30 @@ function FacilitatorSessionPage({
   onDeleteSession,
   onBack,
 }: FacilitatorSessionPageProps) {
-  const [creationForm, setCreationForm] = useState({
-    sessionName: '',
-    sessionCode: '',
-  });
+  const [creationName, setCreationName] = useState('');
   const [renameValue, setRenameValue] = useState('');
 
   useEffect(() => {
     setRenameValue(session?.sessionName ?? '');
   }, [session?.sessionCode, session?.sessionName]);
 
-  const handleSessionCodeChange = (event: ChangeEvent<HTMLInputElement>): void => {
-    onSessionCodeChange(event.target.value);
-  };
-
-  const handleCreationFormChange =
-    (field: 'sessionName' | 'sessionCode') =>
-    (event: ChangeEvent<HTMLInputElement>): void => {
-      setCreationForm((current) => ({ ...current, [field]: event.target.value }));
-    };
-
   const handleCreateSession = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
 
-    const sessionName = creationForm.sessionName.trim();
-    const nextSessionCode = creationForm.sessionCode.trim();
+    const sessionName = creationName.trim();
 
-    if (!sessionName || !nextSessionCode) {
+    if (!sessionName) {
       return;
     }
 
-    const created = await onCreateSession(sessionName, nextSessionCode);
+    const created = await onCreateSession(sessionName);
 
     if (created) {
-      setCreationForm({
-        sessionName: '',
-        sessionCode: '',
-      });
+      setCreationName('');
     }
   };
 
-  const handleRenameSession = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
-    event.preventDefault();
-
+  const handleRenameSession = async (): Promise<void> => {
     if (!session) {
       return;
     }
@@ -133,8 +106,6 @@ function FacilitatorSessionPage({
       setRenameValue(trimmedName);
     }
   };
-
-  const hasParticipants = Boolean(session?.participants.length);
 
   return (
     <section className="session-room facilitator-room">
@@ -160,31 +131,21 @@ function FacilitatorSessionPage({
           </div>
         </div>
 
-        <form className="session-create-form" onSubmit={handleCreateSession}>
+        <form className="session-create-form session-create-form--simple" onSubmit={handleCreateSession}>
           <label className="field">
             <span>Название сессии</span>
             <input
               type="text"
               placeholder="Например, Приёмное отделение"
-              value={creationForm.sessionName}
-              onChange={handleCreationFormChange('sessionName')}
-            />
-          </label>
-
-          <label className="field">
-            <span>Код сессии</span>
-            <input
-              type="text"
-              placeholder="Например, WARD-12"
-              value={creationForm.sessionCode}
-              onChange={handleCreationFormChange('sessionCode')}
+              value={creationName}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => setCreationName(event.target.value)}
             />
           </label>
 
           <button
             type="submit"
             className="primary-button"
-            disabled={creatingSession || !creationForm.sessionName.trim() || !creationForm.sessionCode.trim()}
+            disabled={creatingSession || !creationName.trim()}
           >
             {creatingSession ? 'Создание...' : 'Создать сессию'}
           </button>
@@ -192,7 +153,7 @@ function FacilitatorSessionPage({
 
         <div className="waiting-note compact-note">
           <p>
-            Игроки смогут подключаться только к тем сессиям, которые ведущий создал заранее.
+            Код сессии теперь формируется автоматически. Игроки увидят готовую комнату в списке доступных сессий.
           </p>
         </div>
       </div>
@@ -218,7 +179,10 @@ function FacilitatorSessionPage({
               return (
                 <article
                   key={sessionItem.sessionId}
-                  className={isSelected ? 'session-card selected' : 'session-card'}
+                  className={isSelected ? 'session-card selected session-card--interactive' : 'session-card session-card--interactive'}
+                  onClick={() => {
+                    void onOpenSession(sessionItem.sessionCode);
+                  }}
                 >
                   <div className="session-card-header">
                     <div>
@@ -233,15 +197,7 @@ function FacilitatorSessionPage({
                     <span>Этапов: {sessionItem.stageCount}</span>
                   </div>
 
-                  <div className="session-card-actions session-card-actions--four">
-                    <button
-                      type="button"
-                      className="secondary-button compact-button"
-                      onClick={() => onOpenSession(sessionItem.sessionCode)}
-                      disabled={loading || isActionPending}
-                    >
-                      Открыть
-                    </button>
+                  <div className="session-card-actions session-card-actions--three" onClick={(event) => event.stopPropagation()}>
                     <button
                       type="button"
                       className="primary-button compact-button"
@@ -278,26 +234,15 @@ function FacilitatorSessionPage({
         )}
       </div>
 
-      <form className="session-lookup" onSubmit={onLookupSession}>
-        <label className="field session-lookup-field">
-          <span>Код сессии</span>
-          <input
-            type="text"
-            placeholder="Например, WARD-12"
-            value={sessionCode}
-            onChange={handleSessionCodeChange}
-          />
-        </label>
-
-        <button className="primary-button" type="submit" disabled={loading}>
-          {loading ? 'Загрузка...' : 'Открыть список игроков'}
-        </button>
-      </form>
-
-      {error ? <p className="form-error">{error}</p> : null}
-
       {session ? (
-        <>
+        <div className="participants-panel session-rename-inline-panel">
+          <div className="participants-panel-header">
+            <div>
+              <p className="section-kicker">Активная сессия</p>
+              <h3>Название и состояние комнаты</h3>
+            </div>
+          </div>
+
           <div className="room-grid facilitator-summary-grid">
             <article className="info-card">
               <span>Сессия</span>
@@ -321,91 +266,49 @@ function FacilitatorSessionPage({
             </article>
           </div>
 
-          <div className="participants-panel session-rename-panel">
-            <div className="participants-panel-header">
-              <div>
-                <p className="section-kicker">Название сессии</p>
-                <h3>Переименование игровой комнаты</h3>
-              </div>
-            </div>
+          <div className="session-rename-inline-form">
+            <label className="field session-lookup-name-field">
+              <span>Название сессии</span>
+              <input
+                type="text"
+                placeholder="Введите новое название сессии"
+                value={renameValue}
+                onChange={(event) => setRenameValue(event.target.value)}
+                disabled={renamingSession}
+              />
+            </label>
 
-            <form className="session-rename-form" onSubmit={handleRenameSession}>
-              <label className="field">
-                <span>Текущее название</span>
-                <input
-                  type="text"
-                  value={renameValue}
-                  onChange={(event) => setRenameValue(event.target.value)}
-                  placeholder="Введите новое название сессии"
-                />
-              </label>
-
-              <button
-                type="submit"
-                className="secondary-button"
-                disabled={renamingSession || !renameValue.trim() || renameValue.trim() === session.sessionName}
-              >
-                {renamingSession ? 'Сохранение...' : 'Сохранить новое название'}
-              </button>
-            </form>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => {
+                void handleRenameSession();
+              }}
+              disabled={renamingSession || !renameValue.trim() || renameValue.trim() === session.sessionName}
+            >
+              {renamingSession ? 'Сохранение...' : 'Сохранить название'}
+            </button>
           </div>
+        </div>
+      ) : null}
 
-          <SessionSetupPanel
-            session={session}
-            loading={loading}
-            randomAssignmentLoading={randomAssignmentLoading}
-            savingStages={setupLoading}
-            roleAssignmentParticipantId={roleAssignmentParticipantId}
-            onSaveStages={onSaveStages}
-            onAssignRandomRoles={onAssignRandomRoles}
-            onAssignManualRole={onAssignManualRole}
-          />
+      {error ? <p className="form-error">{error}</p> : null}
 
-          <div className="participants-panel">
-            <div className="participants-panel-header">
-              <div>
-                <p className="section-kicker">Подключившиеся игроки</p>
-                <h3>Состав стартовой комнаты</h3>
-              </div>
-
-              <button type="button" className="secondary-button" onClick={onRefresh}>
-                Обновить список
-              </button>
-            </div>
-
-            {hasParticipants ? (
-              <div className="participants-list">
-                {session.participants.map((participant, index) => (
-                  <article key={participant.participantId} className="participant-card">
-                    <div className="participant-card-header">
-                      <span className="participant-index">#{index + 1}</span>
-                      <strong>{participant.displayName}</strong>
-                    </div>
-                    <dl className="participant-details">
-                      <div>
-                        <dt>Должность</dt>
-                        <dd>{participant.hospitalPosition}</dd>
-                      </div>
-                      <div>
-                        <dt>Игровая роль</dt>
-                        <dd>{participant.gameRole ?? 'Пока не назначена'}</dd>
-                      </div>
-                    </dl>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="waiting-note">
-                <p>В этой сессии пока нет подключившихся игроков.</p>
-              </div>
-            )}
-          </div>
-        </>
+      {session ? (
+        <SessionSetupPanel
+          session={session}
+          loading={loading}
+          randomAssignmentLoading={randomAssignmentLoading}
+          savingStages={setupLoading}
+          roleAssignmentParticipantId={roleAssignmentParticipantId}
+          onSaveStages={onSaveStages}
+          onAssignRandomRoles={onAssignRandomRoles}
+          onAssignManualRole={onAssignManualRole}
+        />
       ) : (
         <div className="waiting-note facilitator-empty-state">
           <p>
-            Выберите сессию из списка или введите код вручную, чтобы увидеть
-            стартовую комнату и состав участников.
+            Выберите нужную сессию из списка выше, чтобы настроить этапы, назначить роли и изменить её название.
           </p>
         </div>
       )}
