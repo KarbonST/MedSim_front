@@ -6,12 +6,14 @@ interface StaffLoginFormProps {
   formState: StaffFormState;
   onChange: (field: keyof StaffFormState, value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  error: string;
 }
 
 function StaffLoginForm({
   formState,
   onChange,
   onSubmit,
+  error,
 }: StaffLoginFormProps) {
   const activeProfile =
     accessProfiles.find((profile) => profile.id === formState.profile) ?? accessProfiles[0];
@@ -63,6 +65,8 @@ function StaffLoginForm({
           onChange={handleInputChange('password')}
         />
       </label>
+
+      {error ? <p className="form-error">{error}</p> : null}
 
       <button className="primary-button" type="submit">
         Войти в систему

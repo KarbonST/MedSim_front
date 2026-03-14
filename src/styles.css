@@ -89,7 +89,7 @@ button {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  width: min(100%, 680px);
+  width: min(100%, 960px);
   padding: 40px;
   background: #f3fbf6;
   color: #163127;
@@ -140,7 +140,11 @@ button {
 .form-heading p:last-child,
 .waiting-note p,
 .info-card span,
-.access-card span {
+.access-card span,
+.participant-details dt,
+.participant-details dd,
+.session-card-header span,
+.session-card-metrics span {
   margin: 0;
   color: #5a7367;
 }
@@ -198,14 +202,18 @@ button {
 }
 
 .access-cards,
-.room-grid {
+.room-grid,
+.participants-list,
+.session-cards {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
 .access-card,
-.info-card {
+.info-card,
+.participant-card,
+.session-card {
   text-align: left;
   display: flex;
   flex-direction: column;
@@ -219,11 +227,15 @@ button {
 }
 
 .access-card strong,
-.info-card strong {
+.info-card strong,
+.participant-card strong,
+.participants-panel h3,
+.session-card strong {
   color: #163127;
 }
 
-.access-card.active {
+.access-card.active,
+.session-card.selected {
   border-color: #22c55e;
   background: #eefcf1;
   box-shadow: 0 12px 24px rgba(34, 197, 94, 0.12);
@@ -251,6 +263,10 @@ button {
   font-weight: 700;
 }
 
+.session-status-pill {
+  align-self: flex-start;
+}
+
 .waiting-note {
   padding: 20px;
   border-radius: 20px;
@@ -258,64 +274,224 @@ button {
   background: #f7fcf8;
 }
 
-.primary-button,
-.secondary-button {
-  margin-top: 6px;
-  border: 0;
-  border-radius: 18px;
-  padding: 17px 22px;
-  font-weight: 700;
+.session-lookup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: end;
 }
 
-.primary-button {
-  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
-  color: #f0fdf4;
-  box-shadow: 0 18px 34px rgba(21, 128, 61, 0.22);
+.session-lookup-field {
+  margin: 0;
 }
 
-.primary-button:hover,
-.secondary-button:hover {
-  filter: brightness(1.04);
+.facilitator-summary-grid {
+  margin-top: 4px;
 }
 
-.primary-button:disabled {
-  cursor: wait;
-  opacity: 0.75;
+.participants-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 24px;
+  background: #edf8f0;
+  border: 1px solid #d7eadb;
 }
 
-.secondary-button {
-  background: #e7f5eb;
+.sessions-board {
+  background: linear-gradient(180deg, #edf8f0 0%, #f6fcf7 100%);
+}
+
+.participants-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.participants-panel h3 {
+  margin: 8px 0 0;
+  font-size: 1.5rem;
+}
+
+.session-card {
+  gap: 14px;
+}
+
+.session-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.session-card-header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.session-card-metrics {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.session-card-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.session-card-actions--four {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.participant-card {
+  gap: 14px;
+}
+
+.participant-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.participant-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 800;
+}
+
+.participant-details {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.participant-details div {
+  display: grid;
+  gap: 4px;
+}
+
+.participant-details dt {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.participant-details dd {
+  font-size: 1rem;
   color: #244437;
 }
 
-@media (max-width: 980px) {
+.primary-button,
+.secondary-button,
+.danger-button {
+  border: 0;
+  border-radius: 16px;
+  padding: 16px 18px;
+  font-weight: 700;
+  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.primary-button {
+  background: linear-gradient(135deg, #1f9d55 0%, #15803d 100%);
+  color: #f5fff8;
+  box-shadow: 0 14px 28px rgba(21, 128, 61, 0.22);
+}
+
+.secondary-button {
+  background: #e6f4ea;
+  color: #1f5138;
+}
+
+.finish-button {
+  background: #e8f3fb;
+  color: #155b8a;
+}
+
+.danger-button {
+  background: #fdecec;
+  color: #9f1d1d;
+}
+
+.compact-button {
+  padding: 12px 14px;
+  min-width: 0;
+}
+
+.primary-button:hover,
+.secondary-button:hover,
+.danger-button:hover,
+.access-card:hover,
+.mode-button:hover {
+  transform: translateY(-1px);
+}
+
+.primary-button:disabled,
+.secondary-button:disabled,
+.danger-button:disabled {
+  cursor: default;
+  opacity: 0.72;
+  transform: none;
+}
+
+.back-button {
+  align-self: flex-start;
+}
+
+@media (max-width: 900px) {
+  .access-cards,
+  .room-grid,
+  .participants-list,
+  .session-cards,
+  .session-lookup {
+    grid-template-columns: 1fr;
+  }
+
+  .session-card-actions--four {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .form-panel {
+    padding: 28px;
+    border-radius: 28px;
+  }
+
+  .participants-panel-header,
+  .room-hero,
+  .session-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .back-button,
+  .session-lookup .primary-button,
+  .participants-panel .secondary-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
   .page-shell {
     padding: 16px;
   }
 
   .form-panel {
-    padding: 28px 24px 32px;
-  }
-}
-
-@media (max-width: 640px) {
-  .mode-switch,
-  .access-cards,
-  .room-grid {
-    grid-template-columns: 1fr;
+    padding: 22px;
   }
 
-  .page-shell {
-    padding: 12px;
-  }
-
-  .form-panel {
-    padding-left: 18px;
-    padding-right: 18px;
-  }
-
-  .room-hero {
-    flex-direction: column;
-    align-items: stretch;
+  .panel-copy h1,
+  .room-hero h2,
+  .form-heading h2 {
+    font-size: 1.8rem;
   }
 }

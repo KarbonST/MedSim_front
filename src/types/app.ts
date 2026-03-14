@@ -39,8 +39,45 @@ export interface PlayerSession {
   joinedAt: string;
 }
 
+export interface SessionParticipantSummary {
+  participantId: number;
+  playerId: number;
+  displayName: string;
+  hospitalPosition: string;
+  gameRole: string | null;
+  joinedAt: string;
+}
+
+export interface GameSessionSummary {
+  sessionId: number;
+  sessionCode: string;
+  sessionName: string;
+  sessionStatus: string;
+  participantCount: number;
+}
+
+export interface GameSessionParticipantsResponse {
+  sessionId: number;
+  sessionCode: string;
+  sessionName: string;
+  sessionStatus: string;
+  participants: SessionParticipantSummary[];
+}
+
 export interface JoinState {
   loading: boolean;
   error: string;
   session: PlayerSession | null;
+}
+
+export interface SessionOverviewState {
+  loading: boolean;
+  error: string;
+  session: GameSessionParticipantsResponse | null;
+}
+
+export interface SessionsListState {
+  loading: boolean;
+  error: string;
+  sessions: GameSessionSummary[];
 }
