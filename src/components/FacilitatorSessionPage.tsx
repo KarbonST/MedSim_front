@@ -14,6 +14,9 @@ interface FacilitatorSessionPageProps {
   sessionsLoading: boolean;
   creatingSession: boolean;
   renamingSession: boolean;
+  autoTeamAssignmentLoading: boolean;
+  teamRenameId: number | null;
+  teamAssignmentParticipantId: number | null;
   actionSessionCode: string;
   setupLoading: boolean;
   randomAssignmentLoading: boolean;
@@ -22,9 +25,20 @@ interface FacilitatorSessionPageProps {
   session: GameSessionParticipantsResponse | null;
   sessions: GameSessionSummary[];
   onRefreshSessions: () => void | Promise<void>;
-  onCreateSession: (sessionName: string) => Promise<boolean>;
+  onCreateSession: (sessionName: string, teamCount: number) => Promise<boolean>;
   onRenameSession: (sessionCode: string, sessionName: string) => Promise<boolean>;
   onOpenSession: (sessionCode: string) => void | Promise<void>;
+  onRenameTeam: (
+    sessionCode: string,
+    teamId: number,
+    teamName: string,
+  ) => void | Promise<void>;
+  onAutoAssignTeams: (sessionCode: string) => void | Promise<void>;
+  onAssignParticipantTeam: (
+    sessionCode: string,
+    participantId: number,
+    teamId: number,
+  ) => void | Promise<void>;
   onSaveStages: (
     sessionCode: string,
     request: GameSessionStageSettingsRequest,
@@ -47,6 +61,9 @@ function FacilitatorSessionPage({
   sessionsLoading,
   creatingSession,
   renamingSession,
+  autoTeamAssignmentLoading,
+  teamRenameId,
+  teamAssignmentParticipantId,
   actionSessionCode,
   setupLoading,
   randomAssignmentLoading,
@@ -58,6 +75,9 @@ function FacilitatorSessionPage({
   onCreateSession,
   onRenameSession,
   onOpenSession,
+  onRenameTeam,
+  onAutoAssignTeams,
+  onAssignParticipantTeam,
   onSaveStages,
   onAssignRandomRoles,
   onAssignManualRole,
@@ -67,6 +87,7 @@ function FacilitatorSessionPage({
   onBack,
 }: FacilitatorSessionPageProps) {
   const [creationName, setCreationName] = useState('');
+  const [creationTeamCount, setCreationTeamCount] = useState('2');
   const [renameValue, setRenameValue] = useState('');
 
   useEffect(() => {
@@ -77,15 +98,17 @@ function FacilitatorSessionPage({
     event.preventDefault();
 
     const sessionName = creationName.trim();
+    const teamCount = Number.parseInt(creationTeamCount, 10);
 
-    if (!sessionName) {
+    if (!sessionName || Number.isNaN(teamCount)) {
       return;
     }
 
-    const created = await onCreateSession(sessionName);
+    const created = await onCreateSession(sessionName, teamCount);
 
     if (created) {
       setCreationName('');
+      setCreationTeamCount('2');
     }
   };
 
@@ -131,7 +154,7 @@ function FacilitatorSessionPage({
           </div>
         </div>
 
-        <form className="session-create-form session-create-form--simple" onSubmit={handleCreateSession}>
+        <form className="session-create-form" onSubmit={handleCreateSession}>
           <label className="field">
             <span>Название сессии</span>
             <input
@@ -139,6 +162,17 @@ function FacilitatorSessionPage({
               placeholder="Например, Приёмное отделение"
               value={creationName}
               onChange={(event: ChangeEvent<HTMLInputElement>) => setCreationName(event.target.value)}
+            />
+          </label>
+
+          <label className="field compact-field team-count-creation-field">
+            <span>Количество команд</span>
+            <input
+              type="number"
+              min="2"
+              max="12"
+              value={creationTeamCount}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => setCreationTeamCount(event.target.value)}
             />
           </label>
 
@@ -153,7 +187,8 @@ function FacilitatorSessionPage({
 
         <div className="waiting-note compact-note">
           <p>
-            Код сессии теперь формируется автоматически. Игроки увидят готовую комнату в списке доступных сессий.
+            Код сессии и стартовые названия команд формируются автоматически. После создания комнаты ведущий сможет
+            переименовать команды и распределить игроков внутри выбранной сессии.
           </p>
         </div>
       </div>
@@ -194,6 +229,7 @@ function FacilitatorSessionPage({
 
                   <div className="session-card-metrics">
                     <span>Игроков: {sessionItem.participantCount}</span>
+                    <span>Команд: {sessionItem.teamCount}</span>
                     <span>Этапов: {sessionItem.stageCount}</span>
                   </div>
 
@@ -261,6 +297,10 @@ function FacilitatorSessionPage({
               <strong>{session.participants.length}</strong>
             </article>
             <article className="info-card">
+              <span>Команды</span>
+              <strong>{session.teams.length}</strong>
+            </article>
+            <article className="info-card">
               <span>Этапы</span>
               <strong>{session.stages.length}</strong>
             </article>
@@ -298,9 +338,15 @@ function FacilitatorSessionPage({
         <SessionSetupPanel
           session={session}
           loading={loading}
+          autoTeamAssignmentLoading={autoTeamAssignmentLoading}
           randomAssignmentLoading={randomAssignmentLoading}
           savingStages={setupLoading}
+          teamRenameId={teamRenameId}
+          teamAssignmentParticipantId={teamAssignmentParticipantId}
           roleAssignmentParticipantId={roleAssignmentParticipantId}
+          onRenameTeam={onRenameTeam}
+          onAutoAssignTeams={onAutoAssignTeams}
+          onAssignParticipantTeam={onAssignParticipantTeam}
           onSaveStages={onSaveStages}
           onAssignRandomRoles={onAssignRandomRoles}
           onAssignManualRole={onAssignManualRole}
@@ -308,7 +354,7 @@ function FacilitatorSessionPage({
       ) : (
         <div className="waiting-note facilitator-empty-state">
           <p>
-            Выберите нужную сессию из списка выше, чтобы настроить этапы, назначить роли и изменить её название.
+            Выберите нужную сессию из списка выше, чтобы настроить команды, этапы, роли и изменить название комнаты.
           </p>
         </div>
       )}

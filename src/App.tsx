@@ -18,11 +18,14 @@ import {
 } from './lib/persistence';
 import {
   assignManualGameRole,
+  assignParticipantTeam,
   assignRandomGameRoles,
+  autoAssignTeams,
   createGameSession,
-  renameGameSession,
   deleteGameSession,
   finishGameSession,
+  renameGameSession,
+  renameGameSessionTeam,
   saveGameSessionStages,
   startGameSession,
 } from './services/gameSessionsApi';
@@ -57,8 +60,11 @@ function App() {
   const [facilitatorActionCode, setFacilitatorActionCode] = useState('');
   const [facilitatorActionError, setFacilitatorActionError] = useState('');
   const [facilitatorSetupLoading, setFacilitatorSetupLoading] = useState(false);
+  const [facilitatorAutoTeamLoading, setFacilitatorAutoTeamLoading] = useState(false);
   const [facilitatorRandomRoleLoading, setFacilitatorRandomRoleLoading] = useState(false);
   const [facilitatorRoleParticipantId, setFacilitatorRoleParticipantId] = useState<number | null>(null);
+  const [facilitatorTeamRenameId, setFacilitatorTeamRenameId] = useState<number | null>(null);
+  const [facilitatorTeamParticipantId, setFacilitatorTeamParticipantId] = useState<number | null>(null);
   const [creatingSession, setCreatingSession] = useState(false);
   const [renamingSession, setRenamingSession] = useState(false);
   const [isFacilitatorWorkspaceOpen, setIsFacilitatorWorkspaceOpen] = useState(
@@ -108,10 +114,10 @@ function App() {
 
   useEffect(() => {
     if (
-      joinState.session ||
-      !playerForm.sessionCode ||
-      availableSessionsState.loading ||
-      availableSessionsState.error
+      joinState.session
+      || !playerForm.sessionCode
+      || availableSessionsState.loading
+      || availableSessionsState.error
     ) {
       return;
     }
@@ -245,8 +251,22 @@ function App() {
     await Promise.all([loadSessions(staffAuthHeader), loadAvailableSessions()]);
   };
 
+  const syncAfterSessionMutation = async (sessionCode: string): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    await Promise.all([
+      loadSessions(staffAuthHeader),
+      loadSession(sessionCode, staffAuthHeader),
+      loadAvailableSessions(),
+    ]);
+  };
+
   const handleCreateSession = async (
     sessionName: string,
+    teamCount: number,
   ): Promise<boolean> => {
     if (!staffAuthHeader) {
       setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
@@ -260,6 +280,7 @@ function App() {
       const createdSession = await createGameSession(
         {
           sessionName,
+          teamCount,
         },
         staffAuthHeader,
       );
@@ -278,7 +299,6 @@ function App() {
       return false;
     } finally {
       setCreatingSession(false);
-    setRenamingSession(false);
     }
   };
 
@@ -319,17 +339,75 @@ function App() {
     }
   };
 
-  const syncAfterSessionMutation = async (sessionCode: string): Promise<void> => {
+  const handleRenameTeam = async (
+    sessionCode: string,
+    teamId: number,
+    teamName: string,
+  ): Promise<void> => {
     if (!staffAuthHeader) {
       setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
       return;
     }
 
-    await Promise.all([
-      loadSessions(staffAuthHeader),
-      loadSession(sessionCode, staffAuthHeader),
-      loadAvailableSessions(),
-    ]);
+    setFacilitatorActionError('');
+    setFacilitatorTeamRenameId(teamId);
+
+    try {
+      await renameGameSessionTeam(sessionCode, teamId, { teamName }, staffAuthHeader);
+      await syncAfterSessionMutation(sessionCode);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось переименовать команду.',
+      );
+    } finally {
+      setFacilitatorTeamRenameId(null);
+    }
+  };
+
+  const handleAutoAssignTeams = async (sessionCode: string): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    setFacilitatorActionError('');
+    setFacilitatorAutoTeamLoading(true);
+
+    try {
+      await autoAssignTeams(sessionCode, staffAuthHeader);
+      await syncAfterSessionMutation(sessionCode);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось автоматически распределить игроков по командам.',
+      );
+    } finally {
+      setFacilitatorAutoTeamLoading(false);
+    }
+  };
+
+  const handleAssignParticipantTeam = async (
+    sessionCode: string,
+    participantId: number,
+    teamId: number,
+  ): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    setFacilitatorActionError('');
+    setFacilitatorTeamParticipantId(participantId);
+
+    try {
+      await assignParticipantTeam(sessionCode, participantId, { teamId }, staffAuthHeader);
+      await syncAfterSessionMutation(sessionCode);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось назначить команду участнику.',
+      );
+    } finally {
+      setFacilitatorTeamParticipantId(null);
+    }
   };
 
   const handleSaveStages = async (
@@ -463,7 +541,7 @@ function App() {
     }
 
     const shouldDelete = window.confirm(
-      `Удалить сессию ${sessionCode} вместе с её участниками?`,
+      `Удалить сессию ${sessionCode} вместе с её участниками и командами?`,
     );
 
     if (!shouldDelete) {
@@ -478,8 +556,8 @@ function App() {
       await Promise.all([loadSessions(staffAuthHeader), loadAvailableSessions()]);
 
       if (
-        overviewState.session?.sessionCode === sessionCode ||
-        facilitatorSessionCode === sessionCode
+        overviewState.session?.sessionCode === sessionCode
+        || facilitatorSessionCode === sessionCode
       ) {
         setFacilitatorSessionCode('');
         resetOverview();
@@ -506,8 +584,11 @@ function App() {
     setFacilitatorActionCode('');
     setFacilitatorActionError('');
     setFacilitatorSetupLoading(false);
+    setFacilitatorAutoTeamLoading(false);
     setFacilitatorRandomRoleLoading(false);
     setFacilitatorRoleParticipantId(null);
+    setFacilitatorTeamRenameId(null);
+    setFacilitatorTeamParticipantId(null);
     setCreatingSession(false);
     setRenamingSession(false);
     setStaffError('');
@@ -537,6 +618,9 @@ function App() {
             sessionsLoading={sessionsState.loading}
             creatingSession={creatingSession}
             renamingSession={renamingSession}
+            autoTeamAssignmentLoading={facilitatorAutoTeamLoading}
+            teamRenameId={facilitatorTeamRenameId}
+            teamAssignmentParticipantId={facilitatorTeamParticipantId}
             actionSessionCode={facilitatorActionCode}
             setupLoading={facilitatorSetupLoading}
             randomAssignmentLoading={facilitatorRandomRoleLoading}
@@ -548,6 +632,9 @@ function App() {
             onCreateSession={handleCreateSession}
             onRenameSession={handleRenameSession}
             onOpenSession={handleOpenSession}
+            onRenameTeam={handleRenameTeam}
+            onAutoAssignTeams={handleAutoAssignTeams}
+            onAssignParticipantTeam={handleAssignParticipantTeam}
             onSaveStages={handleSaveStages}
             onAssignRandomRoles={handleAssignRandomRoles}
             onAssignManualRole={handleAssignManualRole}

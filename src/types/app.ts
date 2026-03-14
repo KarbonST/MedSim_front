@@ -56,8 +56,17 @@ export interface SessionParticipantSummary {
   playerId: number;
   displayName: string;
   hospitalPosition: string;
+  teamId: number | null;
+  teamName: string | null;
   gameRole: string | null;
   joinedAt: string;
+}
+
+export interface SessionTeamSummary {
+  teamId: number;
+  teamName: string;
+  memberCount: number;
+  sortOrder: number;
 }
 
 export type StageInteractionMode = 'CHAT_ONLY' | 'CHAT_AND_KANBAN';
@@ -74,10 +83,19 @@ export interface GameSessionStageSettingsRequest {
 
 export interface GameSessionCreateRequest {
   sessionName: string;
+  teamCount: number;
 }
 
 export interface GameSessionRenameRequest {
   sessionName: string;
+}
+
+export interface GameSessionTeamRenameRequest {
+  teamName: string;
+}
+
+export interface GameSessionTeamAssignmentRequest {
+  teamId: number;
 }
 
 export interface GameSessionRoleAssignmentRequest {
@@ -90,6 +108,7 @@ export interface GameSessionSummary {
   sessionName: string;
   sessionStatus: string;
   participantCount: number;
+  teamCount: number;
   stageCount: number;
 }
 
@@ -98,6 +117,7 @@ export interface GameSessionParticipantsResponse {
   sessionCode: string;
   sessionName: string;
   sessionStatus: string;
+  teams: SessionTeamSummary[];
   participants: SessionParticipantSummary[];
   stages: SessionStageSetting[];
 }

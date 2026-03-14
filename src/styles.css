@@ -412,7 +412,7 @@ button {
   border-radius: 16px;
   padding: 16px 18px;
   min-height: 56px;
-  font-weight: 700
+  font-weight: 700;
   transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
 }
 
@@ -825,5 +825,87 @@ button {
   .session-create-form--simple,
   .session-rename-inline-form {
     grid-template-columns: 1fr;
+  }
+}
+
+
+.team-count-creation-field {
+  max-width: 220px;
+}
+
+.team-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.team-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid #d7eadb;
+  background: #fbfffc;
+}
+
+.team-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.team-card-header > div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.team-order-badge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #e6f4ea;
+  color: #1f5138;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.team-edit-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.participant-management-details {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.participant-team-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.participant-team-warning {
+  margin: 0;
+  color: #7a4d18;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+@media (max-width: 900px) {
+  .team-cards,
+  .team-edit-form,
+  .participant-management-details,
+  .participant-team-form {
+    grid-template-columns: 1fr;
+  }
+
+  .team-count-creation-field {
+    max-width: none;
   }
 }

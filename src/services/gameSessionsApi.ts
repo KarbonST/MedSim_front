@@ -5,6 +5,8 @@ import type {
   GameSessionRoleAssignmentRequest,
   GameSessionStageSettingsRequest,
   GameSessionSummary,
+  GameSessionTeamAssignmentRequest,
+  GameSessionTeamRenameRequest,
   SessionParticipantSummary,
 } from '../types/app';
 
@@ -73,7 +75,7 @@ export async function createGameSession(
         response,
         response.status === 401
           ? 'Нужно заново войти под учётной записью ведущего.'
-          : 'Не удалось создать сессию. Проверьте код и название.',
+          : 'Не удалось создать сессию. Проверьте название и количество команд.',
       ),
     );
   }
@@ -111,6 +113,37 @@ export async function renameGameSession(
   return response.json() as Promise<GameSessionSummary>;
 }
 
+export async function renameGameSessionTeam(
+  sessionCode: string,
+  teamId: number,
+  request: GameSessionTeamRenameRequest,
+  authHeader: string,
+): Promise<GameSessionParticipantsResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/teams/${teamId}/name`,
+    {
+      method: 'PATCH',
+      headers: createAuthorizedHeaders(authHeader, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось переименовать команду. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionParticipantsResponse>;
+}
+
 export async function fetchGameSessionParticipants(
   sessionCode: string,
   authHeader: string,
@@ -131,6 +164,63 @@ export async function fetchGameSessionParticipants(
           : response.status === 401
             ? 'Нужно заново войти под учётной записью ведущего.'
             : 'Не удалось загрузить список участников. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionParticipantsResponse>;
+}
+
+export async function autoAssignTeams(
+  sessionCode: string,
+  authHeader: string,
+): Promise<GameSessionParticipantsResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/teams/auto-assign`,
+    {
+      method: 'POST',
+      headers: createAuthorizedHeaders(authHeader),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось автоматически распределить игроков по командам. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionParticipantsResponse>;
+}
+
+export async function assignParticipantTeam(
+  sessionCode: string,
+  participantId: number,
+  request: GameSessionTeamAssignmentRequest,
+  authHeader: string,
+): Promise<GameSessionParticipantsResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/participants/${participantId}/team`,
+    {
+      method: 'PATCH',
+      headers: createAuthorizedHeaders(authHeader, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось назначить команду участнику. Попробуйте ещё раз.',
       ),
     );
   }
