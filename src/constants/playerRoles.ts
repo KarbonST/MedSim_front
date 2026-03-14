@@ -1,4 +1,4 @@
-export const playerRoles = [
+export const playerRoles: string[] = [
   'Главный врач',
   'Главная медсестра',
   'Главный инженер',

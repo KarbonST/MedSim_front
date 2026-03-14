@@ -23,7 +23,7 @@ Frontend-часть платформы `MedSim` для учебной симул
 
 - `React`
 - `Vite`
-- `JavaScript`
+- `TypeScript`
 - CSS без UI-библиотеки
 
 ## Визуальный подход
@@ -39,22 +39,30 @@ Frontend-часть платформы `MedSim` для учебной симул
 ```text
 src
 ├── components
-│   ├── BrandHeader.jsx
-│   ├── ModeSwitch.jsx
-│   ├── PlayerEntryForm.jsx
-│   ├── SessionWaitingRoom.jsx
-│   └── StaffLoginForm.jsx
+│   ├── BrandHeader.tsx
+│   ├── ModeSwitch.tsx
+│   ├── PlayerEntryForm.tsx
+│   ├── SessionWaitingRoom.tsx
+│   └── StaffLoginForm.tsx
 ├── constants
-│   ├── accessProfiles.js
-│   └── playerRoles.js
+│   ├── accessProfiles.ts
+│   └── playerRoles.ts
 ├── hooks
-│   └── usePlayerSession.js
+│   └── usePlayerSession.ts
 ├── services
-│   └── playerSessionsApi.js
-├── App.jsx
-├── main.jsx
-└── styles.css
+│   └── playerSessionsApi.ts
+├── types
+│   └── app.ts
+├── App.tsx
+├── main.tsx
+├── styles.css
+└── vite-env.d.ts
 ```
+
+Дополнительно в корне проекта теперь есть:
+
+- `tsconfig.json`
+- обновлённый `package.json` с зависимостями для `TypeScript`
 
 ## Архитектурная идея
 
@@ -68,6 +76,8 @@ src
   Состояние и сценарная логика.
 - `services/`
   Работа с backend API.
+- `types/`
+  Общие типы приложения, форм и ответов сервера.
 
 Это сделано специально, чтобы дальше было проще добавлять:
 
@@ -75,6 +85,13 @@ src
 - роутинг;
 - новые API-сценарии;
 - страницы по ролям.
+
+Переход на `TypeScript` даёт ещё и более надёжную работу с:
+
+- формами;
+- ролями;
+- API-ответами backend;
+- дальнейшим рефакторингом приложения.
 
 ## Запуск
 
@@ -103,7 +120,7 @@ npm run build
 
 Это настраивается в:
 
-- `src/services/playerSessionsApi.js`
+- `src/services/playerSessionsApi.ts`
 
 Если понадобится другой backend URL, можно добавить переменную окружения:
 

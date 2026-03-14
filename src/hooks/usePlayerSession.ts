@@ -1,16 +1,17 @@
 import { startTransition, useState } from 'react';
 import { joinPlayerSession } from '../services/playerSessionsApi';
+import type { JoinState, PlayerFormState } from '../types/app';
 
-const initialJoinState = {
+const initialJoinState: JoinState = {
   loading: false,
   error: '',
   session: null,
 };
 
 export function usePlayerSession() {
-  const [joinState, setJoinState] = useState(initialJoinState);
+  const [joinState, setJoinState] = useState<JoinState>(initialJoinState);
 
-  const joinSession = async (formState) => {
+  const joinSession = async (formState: PlayerFormState): Promise<void> => {
     setJoinState((current) => ({ ...current, loading: true, error: '' }));
 
     try {
@@ -36,7 +37,7 @@ export function usePlayerSession() {
     }
   };
 
-  const resetSession = () => {
+  const resetSession = (): void => {
     setJoinState(initialJoinState);
   };
 

@@ -1,6 +1,10 @@
+import type { PlayerSession, PlayerSessionJoinRequest } from '../types/app';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
 
-export async function joinPlayerSession(payload) {
+export async function joinPlayerSession(
+  payload: PlayerSessionJoinRequest,
+): Promise<PlayerSession> {
   const response = await fetch(`${API_BASE_URL}/api/player-sessions/join`, {
     method: 'POST',
     headers: {
@@ -17,5 +21,5 @@ export async function joinPlayerSession(payload) {
     throw new Error(fallbackMessage);
   }
 
-  return response.json();
+  return response.json() as Promise<PlayerSession>;
 }

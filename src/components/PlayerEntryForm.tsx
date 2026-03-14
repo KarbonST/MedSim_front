@@ -1,6 +1,28 @@
+import type { ChangeEvent, FormEvent } from 'react';
 import { playerRoles } from '../constants/playerRoles';
+import type { PlayerFormState } from '../types/app';
 
-function PlayerEntryForm({ formState, onChange, onSubmit, loading, error }) {
+interface PlayerEntryFormProps {
+  formState: PlayerFormState;
+  onChange: (field: keyof PlayerFormState, value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  loading: boolean;
+  error: string;
+}
+
+function PlayerEntryForm({
+  formState,
+  onChange,
+  onSubmit,
+  loading,
+  error,
+}: PlayerEntryFormProps) {
+  const handleInputChange =
+    (field: keyof PlayerFormState) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      onChange(field, event.target.value);
+    };
+
   return (
     <form className="entry-form" onSubmit={onSubmit}>
       <div className="form-heading">
@@ -18,7 +40,7 @@ function PlayerEntryForm({ formState, onChange, onSubmit, loading, error }) {
           type="text"
           placeholder="Например, Анна Петрова"
           value={formState.name}
-          onChange={(event) => onChange('name', event.target.value)}
+          onChange={handleInputChange('name')}
         />
       </label>
 
@@ -26,7 +48,7 @@ function PlayerEntryForm({ formState, onChange, onSubmit, loading, error }) {
         <span>Должность в больнице</span>
         <select
           value={formState.hospitalRole}
-          onChange={(event) => onChange('hospitalRole', event.target.value)}
+          onChange={handleInputChange('hospitalRole')}
         >
           {playerRoles.map((role) => (
             <option key={role} value={role}>
@@ -42,7 +64,7 @@ function PlayerEntryForm({ formState, onChange, onSubmit, loading, error }) {
           type="text"
           placeholder="Например, WARD-12"
           value={formState.sessionCode}
-          onChange={(event) => onChange('sessionCode', event.target.value)}
+          onChange={handleInputChange('sessionCode')}
         />
       </label>
 

@@ -1,8 +1,26 @@
+import type { ChangeEvent, FormEvent } from 'react';
 import { accessProfiles } from '../constants/accessProfiles';
+import type { StaffFormState } from '../types/app';
 
-function StaffLoginForm({ formState, onChange, onSubmit }) {
+interface StaffLoginFormProps {
+  formState: StaffFormState;
+  onChange: (field: keyof StaffFormState, value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}
+
+function StaffLoginForm({
+  formState,
+  onChange,
+  onSubmit,
+}: StaffLoginFormProps) {
   const activeProfile =
     accessProfiles.find((profile) => profile.id === formState.profile) ?? accessProfiles[0];
+
+  const handleInputChange =
+    (field: keyof StaffFormState) =>
+    (event: ChangeEvent<HTMLInputElement>) => {
+      onChange(field, event.target.value);
+    };
 
   return (
     <form className="entry-form" onSubmit={onSubmit}>
@@ -32,7 +50,7 @@ function StaffLoginForm({ formState, onChange, onSubmit }) {
           type="text"
           placeholder="Введите логин"
           value={formState.login}
-          onChange={(event) => onChange('login', event.target.value)}
+          onChange={handleInputChange('login')}
         />
       </label>
 
@@ -42,7 +60,7 @@ function StaffLoginForm({ formState, onChange, onSubmit }) {
           type="password"
           placeholder="Введите пароль"
           value={formState.password}
-          onChange={(event) => onChange('password', event.target.value)}
+          onChange={handleInputChange('password')}
         />
       </label>
 

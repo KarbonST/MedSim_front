@@ -1,4 +1,6 @@
-export const accessProfiles = [
+import type { AccessProfile } from '../types/app';
+
+export const accessProfiles: AccessProfile[] = [
   {
     id: 'facilitator',
     label: 'Ведущий',

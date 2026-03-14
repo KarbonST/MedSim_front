@@ -1,6 +1,12 @@
+import type { PlayerSession } from '../types/app';
 import BrandHeader from './BrandHeader';
 
-function SessionWaitingRoom({ session, onReset }) {
+interface SessionWaitingRoomProps {
+  session: PlayerSession;
+  onReset: () => void;
+}
+
+function SessionWaitingRoom({ session, onReset }: SessionWaitingRoomProps) {
   return (
     <section className="session-room">
       <BrandHeader
