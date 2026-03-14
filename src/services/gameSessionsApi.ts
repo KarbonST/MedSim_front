@@ -10,7 +10,8 @@ import type {
   SessionParticipantSummary,
 } from '../types/app';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+const API_PREFIX = `${API_BASE_URL}/api`;
 
 function createAuthorizedHeaders(authHeader: string, init?: HeadersInit): HeadersInit {
   return {
@@ -39,7 +40,7 @@ async function parseApiError(response: Response, fallbackMessage: string): Promi
 }
 
 export async function fetchGameSessions(authHeader: string): Promise<GameSessionSummary[]> {
-  const response = await fetch(`${API_BASE_URL}/api/game-sessions`, {
+  const response = await fetch(`${API_PREFIX}/game-sessions`, {
     headers: createAuthorizedHeaders(authHeader),
   });
 
@@ -61,7 +62,7 @@ export async function createGameSession(
   request: GameSessionCreateRequest,
   authHeader: string,
 ): Promise<GameSessionSummary> {
-  const response = await fetch(`${API_BASE_URL}/api/game-sessions`, {
+  const response = await fetch(`${API_PREFIX}/game-sessions`, {
     method: 'POST',
     headers: createAuthorizedHeaders(authHeader, {
       'Content-Type': 'application/json',
@@ -89,7 +90,7 @@ export async function renameGameSession(
   authHeader: string,
 ): Promise<GameSessionSummary> {
   const response = await fetch(
-    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/name`,
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/name`,
     {
       method: 'PATCH',
       headers: createAuthorizedHeaders(authHeader, {
@@ -120,7 +121,7 @@ export async function renameGameSessionTeam(
   authHeader: string,
 ): Promise<GameSessionParticipantsResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/teams/${teamId}/name`,
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/teams/${teamId}/name`,
     {
       method: 'PATCH',
       headers: createAuthorizedHeaders(authHeader, {
@@ -149,7 +150,7 @@ export async function fetchGameSessionParticipants(
   authHeader: string,
 ): Promise<GameSessionParticipantsResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/participants`,
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/participants`,
     {
       headers: createAuthorizedHeaders(authHeader),
     },
@@ -176,7 +177,7 @@ export async function autoAssignTeams(
   authHeader: string,
 ): Promise<GameSessionParticipantsResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/teams/auto-assign`,
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/teams/auto-assign`,
     {
       method: 'POST',
       headers: createAuthorizedHeaders(authHeader),
@@ -204,7 +205,7 @@ export async function assignParticipantTeam(
   authHeader: string,
 ): Promise<GameSessionParticipantsResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/participants/${participantId}/team`,
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/participants/${participantId}/team`,
     {
       method: 'PATCH',
       headers: createAuthorizedHeaders(authHeader, {
@@ -234,7 +235,7 @@ export async function saveGameSessionStages(
   authHeader: string,
 ): Promise<GameSessionParticipantsResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/stages`,
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/stages`,
     {
       method: 'PUT',
       headers: createAuthorizedHeaders(authHeader, {
@@ -263,7 +264,7 @@ export async function assignRandomGameRoles(
   authHeader: string,
 ): Promise<GameSessionParticipantsResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/roles/random`,
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/roles/random`,
     {
       method: 'POST',
       headers: createAuthorizedHeaders(authHeader),
@@ -291,7 +292,7 @@ export async function assignManualGameRole(
   authHeader: string,
 ): Promise<SessionParticipantSummary> {
   const response = await fetch(
-    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/participants/${participantId}/role`,
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/participants/${participantId}/role`,
     {
       method: 'PATCH',
       headers: createAuthorizedHeaders(authHeader, {
@@ -320,7 +321,7 @@ export async function startGameSession(
   authHeader: string,
 ): Promise<GameSessionSummary> {
   const response = await fetch(
-    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/start`,
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/start`,
     {
       method: 'PATCH',
       headers: createAuthorizedHeaders(authHeader),
@@ -346,7 +347,7 @@ export async function finishGameSession(
   authHeader: string,
 ): Promise<GameSessionSummary> {
   const response = await fetch(
-    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/finish`,
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/finish`,
     {
       method: 'PATCH',
       headers: createAuthorizedHeaders(authHeader),
@@ -372,7 +373,7 @@ export async function deleteGameSession(
   authHeader: string,
 ): Promise<void> {
   const response = await fetch(
-    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}`,
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}`,
     {
       method: 'DELETE',
       headers: createAuthorizedHeaders(authHeader),

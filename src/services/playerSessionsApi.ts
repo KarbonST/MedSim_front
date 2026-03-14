@@ -5,7 +5,8 @@ import type {
   PlayerTeamWorkspace,
 } from '../types/app';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+const API_PREFIX = `${API_BASE_URL}/api`;
 
 async function parseErrorMessage(response: Response, fallbackMessage: string): Promise<string> {
   const contentType = response.headers.get('content-type') ?? '';
@@ -27,7 +28,7 @@ async function parseErrorMessage(response: Response, fallbackMessage: string): P
 }
 
 export async function fetchAvailablePlayerSessions(): Promise<AvailablePlayerSession[]> {
-  const response = await fetch(`${API_BASE_URL}/api/player-sessions/available`);
+  const response = await fetch(`${API_PREFIX}/player-sessions/available`);
 
   if (!response.ok) {
     throw new Error(
@@ -44,7 +45,7 @@ export async function fetchAvailablePlayerSessions(): Promise<AvailablePlayerSes
 export async function joinPlayerSession(
   payload: PlayerSessionJoinRequest,
 ): Promise<PlayerSession> {
-  const response = await fetch(`${API_BASE_URL}/api/player-sessions/join`, {
+  const response = await fetch(`${API_PREFIX}/player-sessions/join`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -72,7 +73,7 @@ export async function fetchPlayerTeamWorkspace(
   participantId: number,
 ): Promise<PlayerTeamWorkspace> {
   const response = await fetch(
-    `${API_BASE_URL}/api/player-sessions/${encodeURIComponent(sessionCode)}/participants/${participantId}/workspace`,
+    `${API_PREFIX}/player-sessions/${encodeURIComponent(sessionCode)}/participants/${participantId}/workspace`,
   );
 
   if (!response.ok) {

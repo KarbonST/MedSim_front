@@ -1,13 +1,14 @@
 import type { StaffProfile } from '../types/app';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+const API_PREFIX = `${API_BASE_URL}/api`;
 
 export function createBasicAuthHeader(login: string, password: string): string {
   return `Basic ${window.btoa(`${login}:${password}`)}`;
 }
 
 export async function fetchStaffProfile(authHeader: string): Promise<StaffProfile> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+  const response = await fetch(`${API_PREFIX}/auth/me`, {
     headers: {
       Authorization: authHeader,
     },

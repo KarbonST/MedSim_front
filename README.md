@@ -136,11 +136,9 @@ npm run build
 
 ## Backend API
 
-По умолчанию фронт обращается к:
+По умолчанию фронт обращается к backend через относительный префикс `/api`. В режиме разработки `Vite` проксирует эти запросы на локальный backend `http://localhost:8080`, поэтому одной публичной ссылки на фронт достаточно и для работы с backend.
 
-- `http://localhost:8080`
-
-Это настраивается через `VITE_API_BASE_URL`.
+Если нужно обращаться к backend напрямую, это можно переопределить через `VITE_API_BASE_URL`.
 
 Пример:
 
@@ -153,6 +151,12 @@ VITE_API_BASE_URL=http://localhost:8080
 - `src/services/playerSessionsApi.ts`
 - `src/services/gameSessionsApi.ts`
 - `src/services/staffAuthApi.ts`
+
+Для удалённого тестирования через `cloudpub` dev-сервер Vite уже настроен на:
+
+- `server.host = 0.0.0.0`;
+- `allowedHosts` для публичного домена;
+- proxy `/api -> http://localhost:8080`.
 
 ## Текущий пользовательский поток
 
