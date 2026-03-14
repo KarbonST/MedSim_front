@@ -1,5 +1,5 @@
 import type { ChangeEvent, FormEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import BrandHeader from './BrandHeader';
 import SessionSetupPanel from './SessionSetupPanel';
 import type {
@@ -14,6 +14,7 @@ interface FacilitatorSessionPageProps {
   loading: boolean;
   sessionsLoading: boolean;
   creatingSession: boolean;
+  renamingSession: boolean;
   actionSessionCode: string;
   setupLoading: boolean;
   randomAssignmentLoading: boolean;
@@ -26,6 +27,7 @@ interface FacilitatorSessionPageProps {
   onRefresh: () => void | Promise<void>;
   onRefreshSessions: () => void | Promise<void>;
   onCreateSession: (sessionName: string, sessionCode: string) => Promise<boolean>;
+  onRenameSession: (sessionCode: string, sessionName: string) => Promise<boolean>;
   onOpenSession: (sessionCode: string) => void | Promise<void>;
   onSaveStages: (
     sessionCode: string,
@@ -49,6 +51,7 @@ function FacilitatorSessionPage({
   loading,
   sessionsLoading,
   creatingSession,
+  renamingSession,
   actionSessionCode,
   setupLoading,
   randomAssignmentLoading,
@@ -61,6 +64,7 @@ function FacilitatorSessionPage({
   onRefresh,
   onRefreshSessions,
   onCreateSession,
+  onRenameSession,
   onOpenSession,
   onSaveStages,
   onAssignRandomRoles,
@@ -74,6 +78,11 @@ function FacilitatorSessionPage({
     sessionName: '',
     sessionCode: '',
   });
+  const [renameValue, setRenameValue] = useState('');
+
+  useEffect(() => {
+    setRenameValue(session?.sessionName ?? '');
+  }, [session?.sessionCode, session?.sessionName]);
 
   const handleSessionCodeChange = (event: ChangeEvent<HTMLInputElement>): void => {
     onSessionCodeChange(event.target.value);
@@ -102,6 +111,26 @@ function FacilitatorSessionPage({
         sessionName: '',
         sessionCode: '',
       });
+    }
+  };
+
+  const handleRenameSession = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+
+    if (!session) {
+      return;
+    }
+
+    const trimmedName = renameValue.trim();
+
+    if (!trimmedName || trimmedName === session.sessionName) {
+      return;
+    }
+
+    const renamed = await onRenameSession(session.sessionCode, trimmedName);
+
+    if (renamed) {
+      setRenameValue(trimmedName);
     }
   };
 
@@ -290,6 +319,35 @@ function FacilitatorSessionPage({
               <span>Этапы</span>
               <strong>{session.stages.length}</strong>
             </article>
+          </div>
+
+          <div className="participants-panel session-rename-panel">
+            <div className="participants-panel-header">
+              <div>
+                <p className="section-kicker">Название сессии</p>
+                <h3>Переименование игровой комнаты</h3>
+              </div>
+            </div>
+
+            <form className="session-rename-form" onSubmit={handleRenameSession}>
+              <label className="field">
+                <span>Текущее название</span>
+                <input
+                  type="text"
+                  value={renameValue}
+                  onChange={(event) => setRenameValue(event.target.value)}
+                  placeholder="Введите новое название сессии"
+                />
+              </label>
+
+              <button
+                type="submit"
+                className="secondary-button"
+                disabled={renamingSession || !renameValue.trim() || renameValue.trim() === session.sessionName}
+              >
+                {renamingSession ? 'Сохранение...' : 'Сохранить новое название'}
+              </button>
+            </form>
           </div>
 
           <SessionSetupPanel

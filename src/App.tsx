@@ -20,6 +20,7 @@ import {
   assignManualGameRole,
   assignRandomGameRoles,
   createGameSession,
+  renameGameSession,
   deleteGameSession,
   finishGameSession,
   saveGameSessionStages,
@@ -59,6 +60,7 @@ function App() {
   const [facilitatorRandomRoleLoading, setFacilitatorRandomRoleLoading] = useState(false);
   const [facilitatorRoleParticipantId, setFacilitatorRoleParticipantId] = useState<number | null>(null);
   const [creatingSession, setCreatingSession] = useState(false);
+  const [renamingSession, setRenamingSession] = useState(false);
   const [isFacilitatorWorkspaceOpen, setIsFacilitatorWorkspaceOpen] = useState(
     persistedState.facilitator.isWorkspaceOpen && Boolean(persistedState.facilitator.authHeader),
   );
@@ -299,6 +301,7 @@ function App() {
       return false;
     } finally {
       setCreatingSession(false);
+    setRenamingSession(false);
     }
   };
 
@@ -311,6 +314,32 @@ function App() {
     setFacilitatorActionError('');
     setFacilitatorSessionCode(sessionCode);
     await loadSession(sessionCode, staffAuthHeader);
+  };
+
+  const handleRenameSession = async (
+    sessionCode: string,
+    sessionName: string,
+  ): Promise<boolean> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return false;
+    }
+
+    setFacilitatorActionError('');
+    setRenamingSession(true);
+
+    try {
+      await renameGameSession(sessionCode, { sessionName }, staffAuthHeader);
+      await syncAfterSessionMutation(sessionCode);
+      return true;
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось переименовать сессию.',
+      );
+      return false;
+    } finally {
+      setRenamingSession(false);
+    }
   };
 
   const syncAfterSessionMutation = async (sessionCode: string): Promise<void> => {
@@ -503,6 +532,7 @@ function App() {
     setFacilitatorRandomRoleLoading(false);
     setFacilitatorRoleParticipantId(null);
     setCreatingSession(false);
+    setRenamingSession(false);
     setStaffError('');
     setStaffForm((current) => ({ ...current, password: '' }));
     resetOverview();
@@ -530,6 +560,7 @@ function App() {
             loading={overviewState.loading}
             sessionsLoading={sessionsState.loading}
             creatingSession={creatingSession}
+            renamingSession={renamingSession}
             actionSessionCode={facilitatorActionCode}
             setupLoading={facilitatorSetupLoading}
             randomAssignmentLoading={facilitatorRandomRoleLoading}
@@ -542,6 +573,7 @@ function App() {
             onRefresh={handleRefreshSession}
             onRefreshSessions={handleRefreshSessions}
             onCreateSession={handleCreateSession}
+            onRenameSession={handleRenameSession}
             onOpenSession={handleOpenSession}
             onSaveStages={handleSaveStages}
             onAssignRandomRoles={handleAssignRandomRoles}

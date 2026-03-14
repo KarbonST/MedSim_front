@@ -792,3 +792,20 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+.session-rename-panel {
+  gap: 18px;
+}
+
+.session-rename-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+@media (max-width: 900px) {
+  .session-rename-form {
+    grid-template-columns: 1fr;
+  }
+}

@@ -77,6 +77,10 @@ export interface GameSessionCreateRequest {
   sessionName: string;
 }
 
+export interface GameSessionRenameRequest {
+  sessionName: string;
+}
+
 export interface GameSessionRoleAssignmentRequest {
   gameRole: string;
 }

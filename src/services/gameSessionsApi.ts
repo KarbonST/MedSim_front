@@ -1,6 +1,7 @@
 import type {
   GameSessionCreateRequest,
   GameSessionParticipantsResponse,
+  GameSessionRenameRequest,
   GameSessionRoleAssignmentRequest,
   GameSessionStageSettingsRequest,
   GameSessionSummary,
@@ -73,6 +74,36 @@ export async function createGameSession(
         response.status === 401
           ? 'Нужно заново войти под учётной записью ведущего.'
           : 'Не удалось создать сессию. Проверьте код и название.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionSummary>;
+}
+
+export async function renameGameSession(
+  sessionCode: string,
+  request: GameSessionRenameRequest,
+  authHeader: string,
+): Promise<GameSessionSummary> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/name`,
+    {
+      method: 'PATCH',
+      headers: createAuthorizedHeaders(authHeader, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось переименовать сессию. Попробуйте ещё раз.',
       ),
     );
   }
