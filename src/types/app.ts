@@ -51,6 +51,38 @@ export interface PlayerSession {
   joinedAt: string;
 }
 
+export interface PlayerTeamWorkspaceMember {
+  participantId: number;
+  displayName: string;
+  hospitalPosition: string;
+  gameRole: string | null;
+  currentParticipant: boolean;
+}
+
+export type StageInteractionMode = 'CHAT_ONLY' | 'CHAT_AND_KANBAN';
+
+export interface SessionStageSetting {
+  stageNumber: number;
+  durationMinutes: number;
+  interactionMode: StageInteractionMode;
+}
+
+export interface PlayerTeamWorkspace {
+  participantId: number;
+  playerId: number;
+  sessionId: number;
+  sessionCode: string;
+  sessionName: string;
+  sessionStatus: string;
+  displayName: string;
+  hospitalPosition: string;
+  gameRole: string | null;
+  teamId: number | null;
+  teamName: string | null;
+  teammates: PlayerTeamWorkspaceMember[];
+  stages: SessionStageSetting[];
+}
+
 export interface SessionParticipantSummary {
   participantId: number;
   playerId: number;
@@ -67,14 +99,6 @@ export interface SessionTeamSummary {
   teamName: string;
   memberCount: number;
   sortOrder: number;
-}
-
-export type StageInteractionMode = 'CHAT_ONLY' | 'CHAT_AND_KANBAN';
-
-export interface SessionStageSetting {
-  stageNumber: number;
-  durationMinutes: number;
-  interactionMode: StageInteractionMode;
 }
 
 export interface GameSessionStageSettingsRequest {
@@ -126,6 +150,12 @@ export interface JoinState {
   loading: boolean;
   error: string;
   session: PlayerSession | null;
+}
+
+export interface PlayerWorkspaceState {
+  loading: boolean;
+  error: string;
+  workspace: PlayerTeamWorkspace | null;
 }
 
 export interface SessionOverviewState {

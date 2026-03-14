@@ -1,12 +1,13 @@
 import type { ChangeEvent, FormEvent } from 'react';
 import { useEffect, useState } from 'react';
-import BrandHeader from './BrandHeader';
-import SessionSetupPanel from './SessionSetupPanel';
 import type {
   GameSessionParticipantsResponse,
   GameSessionStageSettingsRequest,
   GameSessionSummary,
 } from '../types/app';
+import BrandHeader from './BrandHeader';
+import FacilitatorLiveDashboard from './FacilitatorLiveDashboard';
+import SessionSetupPanel from './SessionSetupPanel';
 
 interface FacilitatorSessionPageProps {
   login: string;
@@ -130,12 +131,14 @@ function FacilitatorSessionPage({
     }
   };
 
+  const isLobby = session?.sessionStatus === 'LOBBY';
+
   return (
     <section className="session-room facilitator-room">
       <BrandHeader
         compact
         eyebrow="Панель ведущего"
-        title="Контроль стартовой комнаты"
+        title={isLobby ? 'Контроль стартовой комнаты' : 'Мониторинг запущенной игры'}
       />
 
       <div className="room-hero">
@@ -188,7 +191,7 @@ function FacilitatorSessionPage({
         <div className="waiting-note compact-note">
           <p>
             Код сессии и стартовые названия команд формируются автоматически. После создания комнаты ведущий сможет
-            переименовать команды и распределить игроков внутри выбранной сессии.
+            настроить состав команд, роли и этапы, а после старта перейти к мониторингу команд в реальном времени.
           </p>
         </div>
       </div>
@@ -275,7 +278,7 @@ function FacilitatorSessionPage({
           <div className="participants-panel-header">
             <div>
               <p className="section-kicker">Активная сессия</p>
-              <h3>Название и состояние комнаты</h3>
+              <h3>{isLobby ? 'Название и состояние комнаты' : 'Состояние запущенной игры'}</h3>
             </div>
           </div>
 
@@ -335,26 +338,31 @@ function FacilitatorSessionPage({
       {error ? <p className="form-error">{error}</p> : null}
 
       {session ? (
-        <SessionSetupPanel
-          session={session}
-          loading={loading}
-          autoTeamAssignmentLoading={autoTeamAssignmentLoading}
-          randomAssignmentLoading={randomAssignmentLoading}
-          savingStages={setupLoading}
-          teamRenameId={teamRenameId}
-          teamAssignmentParticipantId={teamAssignmentParticipantId}
-          roleAssignmentParticipantId={roleAssignmentParticipantId}
-          onRenameTeam={onRenameTeam}
-          onAutoAssignTeams={onAutoAssignTeams}
-          onAssignParticipantTeam={onAssignParticipantTeam}
-          onSaveStages={onSaveStages}
-          onAssignRandomRoles={onAssignRandomRoles}
-          onAssignManualRole={onAssignManualRole}
-        />
+        isLobby ? (
+          <SessionSetupPanel
+            session={session}
+            loading={loading}
+            autoTeamAssignmentLoading={autoTeamAssignmentLoading}
+            randomAssignmentLoading={randomAssignmentLoading}
+            savingStages={setupLoading}
+            teamRenameId={teamRenameId}
+            teamAssignmentParticipantId={teamAssignmentParticipantId}
+            roleAssignmentParticipantId={roleAssignmentParticipantId}
+            onRenameTeam={onRenameTeam}
+            onAutoAssignTeams={onAutoAssignTeams}
+            onAssignParticipantTeam={onAssignParticipantTeam}
+            onSaveStages={onSaveStages}
+            onAssignRandomRoles={onAssignRandomRoles}
+            onAssignManualRole={onAssignManualRole}
+          />
+        ) : (
+          <FacilitatorLiveDashboard session={session} loading={loading} />
+        )
       ) : (
         <div className="waiting-note facilitator-empty-state">
           <p>
-            Выберите нужную сессию из списка выше, чтобы настроить команды, этапы, роли и изменить название комнаты.
+            Выберите нужную сессию из списка выше, чтобы настроить команды, этапы и роли, а после старта отслеживать
+            состояние команд в отдельном мониторинге.
           </p>
         </div>
       )}

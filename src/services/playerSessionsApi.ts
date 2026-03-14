@@ -2,6 +2,7 @@ import type {
   AvailablePlayerSession,
   PlayerSession,
   PlayerSessionJoinRequest,
+  PlayerTeamWorkspace,
 } from '../types/app';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
@@ -64,4 +65,23 @@ export async function joinPlayerSession(
   }
 
   return response.json() as Promise<PlayerSession>;
+}
+
+export async function fetchPlayerTeamWorkspace(
+  sessionCode: string,
+  participantId: number,
+): Promise<PlayerTeamWorkspace> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/player-sessions/${encodeURIComponent(sessionCode)}/participants/${participantId}/workspace`,
+  );
+
+  if (!response.ok) {
+    const fallbackMessage = response.status === 404
+      ? 'Сессия или участник больше не найдены. Подключитесь заново.'
+      : 'Не удалось загрузить командный экран. Попробуйте ещё раз.';
+
+    throw new Error(await parseErrorMessage(response, fallbackMessage));
+  }
+
+  return response.json() as Promise<PlayerTeamWorkspace>;
 }

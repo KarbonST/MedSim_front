@@ -4,6 +4,7 @@ import BrandHeader from './components/BrandHeader';
 import FacilitatorSessionPage from './components/FacilitatorSessionPage';
 import ModeSwitch from './components/ModeSwitch';
 import PlayerEntryForm from './components/PlayerEntryForm';
+import PlayerTeamWorkspace from './components/PlayerTeamWorkspace';
 import SessionWaitingRoom from './components/SessionWaitingRoom';
 import StaffLoginForm from './components/StaffLoginForm';
 import { accessProfiles } from './constants/accessProfiles';
@@ -29,13 +30,21 @@ import {
   saveGameSessionStages,
   startGameSession,
 } from './services/gameSessionsApi';
+import { fetchPlayerTeamWorkspace } from './services/playerSessionsApi';
 import { createBasicAuthHeader, fetchStaffProfile } from './services/staffAuthApi';
 import type {
   GameSessionStageSettingsRequest,
   Mode,
   PlayerFormState,
+  PlayerWorkspaceState,
   StaffFormState,
 } from './types/app';
+
+const initialPlayerWorkspaceState: PlayerWorkspaceState = {
+  loading: false,
+  error: '',
+  workspace: null,
+};
 
 function App() {
   const [persistedState] = useState(() => readPersistedAppState());
@@ -69,6 +78,9 @@ function App() {
   const [renamingSession, setRenamingSession] = useState(false);
   const [isFacilitatorWorkspaceOpen, setIsFacilitatorWorkspaceOpen] = useState(
     persistedState.facilitator.isWorkspaceOpen && Boolean(persistedState.facilitator.authHeader),
+  );
+  const [playerWorkspaceState, setPlayerWorkspaceState] = useState<PlayerWorkspaceState>(
+    initialPlayerWorkspaceState,
   );
   const { joinState, joinSession, resetSession } = usePlayerSession(
     persistedState.playerSession,
@@ -138,6 +150,63 @@ function App() {
   ]);
 
   useEffect(() => {
+    if (!joinState.session) {
+      setPlayerWorkspaceState(initialPlayerWorkspaceState);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadWorkspace = async (showLoader: boolean): Promise<void> => {
+      if (showLoader) {
+        setPlayerWorkspaceState((current) => ({
+          ...current,
+          loading: true,
+          error: '',
+        }));
+      }
+
+      try {
+        const payload = await fetchPlayerTeamWorkspace(
+          joinState.session.sessionCode,
+          joinState.session.participantId,
+        );
+
+        if (isCancelled) {
+          return;
+        }
+
+        setPlayerWorkspaceState({
+          loading: false,
+          error: '',
+          workspace: payload,
+        });
+      } catch (error) {
+        if (isCancelled) {
+          return;
+        }
+
+        setPlayerWorkspaceState((current) => ({
+          loading: false,
+          error: error instanceof Error ? error.message : 'Не удалось загрузить командный экран.',
+          workspace: current.workspace,
+        }));
+      }
+    };
+
+    void loadWorkspace(true);
+
+    const intervalId = window.setInterval(() => {
+      void loadWorkspace(false);
+    }, 5000);
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [joinState.session]);
+
+  useEffect(() => {
     if (!isFacilitatorWorkspaceOpen || !staffAuthHeader) {
       return;
     }
@@ -152,6 +221,34 @@ function App() {
 
     void loadSession(facilitatorSessionCode, staffAuthHeader);
   }, [isFacilitatorWorkspaceOpen, staffAuthHeader, facilitatorSessionCode]);
+
+  useEffect(() => {
+    if (
+      !isFacilitatorWorkspaceOpen
+      || !staffAuthHeader
+      || !facilitatorSessionCode.trim()
+      || !overviewState.session
+      || (overviewState.session.sessionStatus !== 'IN_PROGRESS' && overviewState.session.sessionStatus !== 'FINISHED')
+    ) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void Promise.all([
+        loadSession(facilitatorSessionCode, staffAuthHeader),
+        loadSessions(staffAuthHeader),
+      ]);
+    }, 5000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [
+    isFacilitatorWorkspaceOpen,
+    staffAuthHeader,
+    facilitatorSessionCode,
+    overviewState.session,
+  ]);
 
   useEffect(() => {
     if (!isFacilitatorWorkspaceOpen || !staffAuthHeader) {
@@ -572,6 +669,7 @@ function App() {
   };
 
   const handleResetPlayerFlow = (): void => {
+    setPlayerWorkspaceState(initialPlayerWorkspaceState);
     resetSession();
     setPlayerForm((current) => ({ ...current, sessionCode: '' }));
     void loadAvailableSessions();
@@ -605,12 +703,31 @@ function App() {
 
   const playerError = joinState.error || availableSessionsState.error;
   const facilitatorError = facilitatorActionError || overviewState.error || sessionsState.error;
+  const shouldShowPlayerWorkspace = Boolean(
+    playerWorkspaceState.workspace
+    && playerWorkspaceState.workspace.sessionStatus !== 'LOBBY',
+  );
 
   return (
     <main className="page-shell">
       <section className="form-panel">
         {joinState.session ? (
-          <SessionWaitingRoom session={joinState.session} onReset={handleResetPlayerFlow} />
+          shouldShowPlayerWorkspace && playerWorkspaceState.workspace ? (
+            <PlayerTeamWorkspace
+              workspace={playerWorkspaceState.workspace}
+              loading={playerWorkspaceState.loading}
+              refreshError={playerWorkspaceState.error}
+              onReset={handleResetPlayerFlow}
+            />
+          ) : (
+            <SessionWaitingRoom
+              session={joinState.session}
+              workspace={playerWorkspaceState.workspace}
+              workspaceLoading={playerWorkspaceState.loading}
+              workspaceError={playerWorkspaceState.error}
+              onReset={handleResetPlayerFlow}
+            />
+          )
         ) : isFacilitatorWorkspaceOpen ? (
           <FacilitatorSessionPage
             login={staffForm.login.trim()}
