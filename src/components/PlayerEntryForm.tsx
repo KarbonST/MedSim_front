@@ -45,7 +45,7 @@ function PlayerEntryForm({
       </label>
 
       <label className="field">
-        <span>Должность в больнице</span>
+        <span>Реальная должность в больнице</span>
         <select
           value={formState.hospitalRole}
           onChange={handleInputChange('hospitalRole')}

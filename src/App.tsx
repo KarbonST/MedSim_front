@@ -10,6 +10,11 @@ import { accessProfiles } from './constants/accessProfiles';
 import { playerRoles } from './constants/playerRoles';
 import { useFacilitatorSessionOverview } from './hooks/useFacilitatorSessionOverview';
 import { useGameSessionsList } from './hooks/useGameSessionsList';
+import { usePlayerSession } from './hooks/usePlayerSession';
+import {
+  readPersistedAppState,
+  writePersistedAppState,
+} from './lib/persistence';
 import {
   assignManualGameRole,
   assignRandomGameRoles,
@@ -19,7 +24,6 @@ import {
   startGameSession,
 } from './services/gameSessionsApi';
 import { createBasicAuthHeader, fetchStaffProfile } from './services/staffAuthApi';
-import { usePlayerSession } from './hooks/usePlayerSession';
 import type {
   GameSessionStageSettingsRequest,
   Mode,
@@ -28,29 +32,64 @@ import type {
 } from './types/app';
 
 function App() {
-  const [mode, setMode] = useState<Mode>('player');
+  const [persistedState] = useState(() => readPersistedAppState());
+  const [mode, setMode] = useState<Mode>(persistedState.mode);
   const [playerForm, setPlayerForm] = useState<PlayerFormState>({
-    name: '',
-    hospitalRole: playerRoles[0],
-    sessionCode: '',
+    name: persistedState.playerForm.name,
+    hospitalRole: persistedState.playerForm.hospitalRole || playerRoles[0],
+    sessionCode: persistedState.playerForm.sessionCode,
   });
   const [staffForm, setStaffForm] = useState<StaffFormState>({
-    profile: accessProfiles[0].id,
-    login: '',
+    profile: persistedState.staff.profile || accessProfiles[0].id,
+    login: persistedState.staff.login,
     password: '',
   });
   const [staffError, setStaffError] = useState('');
-  const [staffAuthHeader, setStaffAuthHeader] = useState('');
-  const [facilitatorSessionCode, setFacilitatorSessionCode] = useState('');
+  const [staffAuthHeader, setStaffAuthHeader] = useState(
+    persistedState.facilitator.authHeader,
+  );
+  const [facilitatorSessionCode, setFacilitatorSessionCode] = useState(
+    persistedState.facilitator.sessionCode,
+  );
   const [facilitatorActionCode, setFacilitatorActionCode] = useState('');
   const [facilitatorActionError, setFacilitatorActionError] = useState('');
   const [facilitatorSetupLoading, setFacilitatorSetupLoading] = useState(false);
   const [facilitatorRandomRoleLoading, setFacilitatorRandomRoleLoading] = useState(false);
   const [facilitatorRoleParticipantId, setFacilitatorRoleParticipantId] = useState<number | null>(null);
-  const [isFacilitatorWorkspaceOpen, setIsFacilitatorWorkspaceOpen] = useState(false);
-  const { joinState, joinSession, resetSession } = usePlayerSession();
+  const [isFacilitatorWorkspaceOpen, setIsFacilitatorWorkspaceOpen] = useState(
+    persistedState.facilitator.isWorkspaceOpen && Boolean(persistedState.facilitator.authHeader),
+  );
+  const { joinState, joinSession, resetSession } = usePlayerSession(
+    persistedState.playerSession,
+  );
   const { overviewState, loadSession, resetOverview } = useFacilitatorSessionOverview();
   const { sessionsState, loadSessions, resetSessions } = useGameSessionsList();
+
+  useEffect(() => {
+    writePersistedAppState({
+      mode,
+      playerForm,
+      playerSession: joinState.session,
+      staff: {
+        profile: staffForm.profile,
+        login: staffForm.login.trim(),
+      },
+      facilitator: {
+        authHeader: staffAuthHeader,
+        isWorkspaceOpen: isFacilitatorWorkspaceOpen,
+        sessionCode: facilitatorSessionCode,
+      },
+    });
+  }, [
+    mode,
+    playerForm,
+    joinState.session,
+    staffForm.profile,
+    staffForm.login,
+    staffAuthHeader,
+    isFacilitatorWorkspaceOpen,
+    facilitatorSessionCode,
+  ]);
 
   useEffect(() => {
     if (!isFacilitatorWorkspaceOpen || !staffAuthHeader) {
@@ -58,6 +97,53 @@ function App() {
     }
 
     void loadSessions(staffAuthHeader);
+  }, [isFacilitatorWorkspaceOpen, staffAuthHeader]);
+
+  useEffect(() => {
+    if (!isFacilitatorWorkspaceOpen || !staffAuthHeader || !facilitatorSessionCode.trim()) {
+      return;
+    }
+
+    void loadSession(facilitatorSessionCode, staffAuthHeader);
+  }, [isFacilitatorWorkspaceOpen, staffAuthHeader, facilitatorSessionCode]);
+
+  useEffect(() => {
+    if (!isFacilitatorWorkspaceOpen || !staffAuthHeader) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const restoreFacilitatorProfile = async (): Promise<void> => {
+      try {
+        const profile = await fetchStaffProfile(staffAuthHeader);
+
+        if (profile.systemRole !== 'FACILITATOR') {
+          throw new Error('Эта учётная запись не относится к ведущему.');
+        }
+      } catch (error) {
+        if (isCancelled) {
+          return;
+        }
+
+        setStaffError(
+          error instanceof Error
+            ? error.message
+            : 'Нужно заново войти под учётной записью ведущего.',
+        );
+        setStaffAuthHeader('');
+        setIsFacilitatorWorkspaceOpen(false);
+        setFacilitatorSessionCode('');
+        resetOverview();
+        resetSessions();
+      }
+    };
+
+    void restoreFacilitatorProfile();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [isFacilitatorWorkspaceOpen, staffAuthHeader]);
 
   const updatePlayerForm = (field: keyof PlayerFormState, value: string): void => {
@@ -101,6 +187,7 @@ function App() {
 
       setStaffError('');
       setFacilitatorActionError('');
+      setMode('staff');
       setStaffAuthHeader(authHeader);
       setIsFacilitatorWorkspaceOpen(true);
     } catch (error) {
