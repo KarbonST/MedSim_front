@@ -1,14 +1,37 @@
 import type {
   GameSessionParticipantsResponse,
+  GameSessionRoleAssignmentRequest,
+  GameSessionStageSettingsRequest,
   GameSessionSummary,
+  SessionParticipantSummary,
 } from '../types/app';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
 
-function createAuthorizedHeaders(authHeader: string): HeadersInit {
+function createAuthorizedHeaders(authHeader: string, init?: HeadersInit): HeadersInit {
   return {
+    ...init,
     Authorization: authHeader,
   };
+}
+
+async function parseApiError(response: Response, fallbackMessage: string): Promise<string> {
+  const contentType = response.headers.get('content-type') ?? '';
+
+  if (contentType.includes('application/json')) {
+    const payload = await response.json().catch(() => null) as
+      | { detail?: string; message?: string; error?: string; title?: string }
+      | null;
+
+    const message = payload?.detail ?? payload?.message ?? payload?.error ?? payload?.title;
+
+    if (message) {
+      return message;
+    }
+  }
+
+  const text = await response.text().catch(() => '');
+  return text.trim() || fallbackMessage;
 }
 
 export async function fetchGameSessions(authHeader: string): Promise<GameSessionSummary[]> {
@@ -18,9 +41,12 @@ export async function fetchGameSessions(authHeader: string): Promise<GameSession
 
   if (!response.ok) {
     throw new Error(
-      response.status === 401
-        ? 'Нужно заново войти под учётной записью ведущего.'
-        : 'Не удалось загрузить список сессий. Попробуйте ещё раз.',
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось загрузить список сессий. Попробуйте ещё раз.',
+      ),
     );
   }
 
@@ -39,16 +65,106 @@ export async function fetchGameSessionParticipants(
   );
 
   if (!response.ok) {
-    const fallbackMessage = response.status === 404
-      ? 'Сессия с таким кодом пока не найдена.'
-      : response.status === 401
-        ? 'Нужно заново войти под учётной записью ведущего.'
-        : 'Не удалось загрузить список участников. Попробуйте ещё раз.';
-
-    throw new Error(fallbackMessage);
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 404
+          ? 'Сессия с таким кодом пока не найдена.'
+          : response.status === 401
+            ? 'Нужно заново войти под учётной записью ведущего.'
+            : 'Не удалось загрузить список участников. Попробуйте ещё раз.',
+      ),
+    );
   }
 
   return response.json() as Promise<GameSessionParticipantsResponse>;
+}
+
+export async function saveGameSessionStages(
+  sessionCode: string,
+  request: GameSessionStageSettingsRequest,
+  authHeader: string,
+): Promise<GameSessionParticipantsResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/stages`,
+    {
+      method: 'PUT',
+      headers: createAuthorizedHeaders(authHeader, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось сохранить настройки этапов. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionParticipantsResponse>;
+}
+
+export async function assignRandomGameRoles(
+  sessionCode: string,
+  authHeader: string,
+): Promise<GameSessionParticipantsResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/roles/random`,
+    {
+      method: 'POST',
+      headers: createAuthorizedHeaders(authHeader),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось автоматически назначить роли. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionParticipantsResponse>;
+}
+
+export async function assignManualGameRole(
+  sessionCode: string,
+  participantId: number,
+  request: GameSessionRoleAssignmentRequest,
+  authHeader: string,
+): Promise<SessionParticipantSummary> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/game-sessions/${encodeURIComponent(sessionCode)}/participants/${participantId}/role`,
+    {
+      method: 'PATCH',
+      headers: createAuthorizedHeaders(authHeader, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось назначить игровую роль. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<SessionParticipantSummary>;
 }
 
 export async function startGameSession(
@@ -65,9 +181,12 @@ export async function startGameSession(
 
   if (!response.ok) {
     throw new Error(
-      response.status === 401
-        ? 'Нужно заново войти под учётной записью ведущего.'
-        : 'Не удалось запустить сессию. Попробуйте ещё раз.',
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось запустить сессию. Попробуйте ещё раз.',
+      ),
     );
   }
 
@@ -88,9 +207,12 @@ export async function finishGameSession(
 
   if (!response.ok) {
     throw new Error(
-      response.status === 401
-        ? 'Нужно заново войти под учётной записью ведущего.'
-        : 'Не удалось завершить сессию. Попробуйте ещё раз.',
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось завершить сессию. Попробуйте ещё раз.',
+      ),
     );
   }
 
@@ -111,9 +233,12 @@ export async function deleteGameSession(
 
   if (!response.ok) {
     throw new Error(
-      response.status === 401
-        ? 'Нужно заново войти под учётной записью ведущего.'
-        : 'Не удалось удалить сессию. Попробуйте ещё раз.',
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось удалить сессию. Попробуйте ещё раз.',
+      ),
     );
   }
 }

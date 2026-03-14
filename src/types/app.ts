@@ -53,12 +53,29 @@ export interface SessionParticipantSummary {
   joinedAt: string;
 }
 
+export type StageInteractionMode = 'CHAT_ONLY' | 'CHAT_AND_KANBAN';
+
+export interface SessionStageSetting {
+  stageNumber: number;
+  durationMinutes: number;
+  interactionMode: StageInteractionMode;
+}
+
+export interface GameSessionStageSettingsRequest {
+  stages: SessionStageSetting[];
+}
+
+export interface GameSessionRoleAssignmentRequest {
+  gameRole: string;
+}
+
 export interface GameSessionSummary {
   sessionId: number;
   sessionCode: string;
   sessionName: string;
   sessionStatus: string;
   participantCount: number;
+  stageCount: number;
 }
 
 export interface GameSessionParticipantsResponse {
@@ -67,6 +84,7 @@ export interface GameSessionParticipantsResponse {
   sessionName: string;
   sessionStatus: string;
   participants: SessionParticipantSummary[];
+  stages: SessionStageSetting[];
 }
 
 export interface JoinState {

@@ -11,13 +11,21 @@ import { playerRoles } from './constants/playerRoles';
 import { useFacilitatorSessionOverview } from './hooks/useFacilitatorSessionOverview';
 import { useGameSessionsList } from './hooks/useGameSessionsList';
 import {
+  assignManualGameRole,
+  assignRandomGameRoles,
   deleteGameSession,
   finishGameSession,
+  saveGameSessionStages,
   startGameSession,
 } from './services/gameSessionsApi';
 import { createBasicAuthHeader, fetchStaffProfile } from './services/staffAuthApi';
 import { usePlayerSession } from './hooks/usePlayerSession';
-import type { Mode, PlayerFormState, StaffFormState } from './types/app';
+import type {
+  GameSessionStageSettingsRequest,
+  Mode,
+  PlayerFormState,
+  StaffFormState,
+} from './types/app';
 
 function App() {
   const [mode, setMode] = useState<Mode>('player');
@@ -36,6 +44,9 @@ function App() {
   const [facilitatorSessionCode, setFacilitatorSessionCode] = useState('');
   const [facilitatorActionCode, setFacilitatorActionCode] = useState('');
   const [facilitatorActionError, setFacilitatorActionError] = useState('');
+  const [facilitatorSetupLoading, setFacilitatorSetupLoading] = useState(false);
+  const [facilitatorRandomRoleLoading, setFacilitatorRandomRoleLoading] = useState(false);
+  const [facilitatorRoleParticipantId, setFacilitatorRoleParticipantId] = useState<number | null>(null);
   const [isFacilitatorWorkspaceOpen, setIsFacilitatorWorkspaceOpen] = useState(false);
   const { joinState, joinSession, resetSession } = usePlayerSession();
   const { overviewState, loadSession, resetOverview } = useFacilitatorSessionOverview();
@@ -145,13 +156,91 @@ function App() {
       return;
     }
 
-    await loadSessions(staffAuthHeader);
+    await Promise.all([
+      loadSessions(staffAuthHeader),
+      loadSession(sessionCode, staffAuthHeader),
+    ]);
+  };
 
-    if (
-      overviewState.session?.sessionCode === sessionCode ||
-      facilitatorSessionCode === sessionCode
-    ) {
+  const handleSaveStages = async (
+    sessionCode: string,
+    request: GameSessionStageSettingsRequest,
+  ): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    setFacilitatorActionError('');
+    setFacilitatorSetupLoading(true);
+
+    try {
+      await saveGameSessionStages(sessionCode, request, staffAuthHeader);
+      await syncAfterSessionMutation(sessionCode);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось сохранить настройки этапов.',
+      );
+    } finally {
+      setFacilitatorSetupLoading(false);
+    }
+  };
+
+  const handleAssignRandomRoles = async (sessionCode: string): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    setFacilitatorActionError('');
+    setFacilitatorRandomRoleLoading(true);
+
+    try {
+      await assignRandomGameRoles(sessionCode, staffAuthHeader);
+      await syncAfterSessionMutation(sessionCode);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось автоматически распределить роли.',
+      );
+    } finally {
+      setFacilitatorRandomRoleLoading(false);
+    }
+  };
+
+  const handleAssignManualRole = async (
+    sessionCode: string,
+    participantId: number,
+    gameRole: string,
+  ): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    const trimmedRole = gameRole.trim();
+
+    if (!trimmedRole) {
+      setFacilitatorActionError('Укажите игровую роль перед сохранением.');
+      return;
+    }
+
+    setFacilitatorActionError('');
+    setFacilitatorRoleParticipantId(participantId);
+
+    try {
+      await assignManualGameRole(
+        sessionCode,
+        participantId,
+        { gameRole: trimmedRole },
+        staffAuthHeader,
+      );
       await loadSession(sessionCode, staffAuthHeader);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось назначить роль участнику.',
+      );
+    } finally {
+      setFacilitatorRoleParticipantId(null);
     }
   };
 
@@ -245,6 +334,9 @@ function App() {
     setFacilitatorSessionCode('');
     setFacilitatorActionCode('');
     setFacilitatorActionError('');
+    setFacilitatorSetupLoading(false);
+    setFacilitatorRandomRoleLoading(false);
+    setFacilitatorRoleParticipantId(null);
     setStaffError('');
     setStaffForm((current) => ({ ...current, password: '' }));
     resetOverview();
@@ -270,6 +362,9 @@ function App() {
             loading={overviewState.loading}
             sessionsLoading={sessionsState.loading}
             actionSessionCode={facilitatorActionCode}
+            setupLoading={facilitatorSetupLoading}
+            randomAssignmentLoading={facilitatorRandomRoleLoading}
+            roleAssignmentParticipantId={facilitatorRoleParticipantId}
             error={facilitatorError}
             session={overviewState.session}
             sessions={sessionsState.sessions}
@@ -278,6 +373,9 @@ function App() {
             onRefresh={handleRefreshSession}
             onRefreshSessions={handleRefreshSessions}
             onOpenSession={handleOpenSession}
+            onSaveStages={handleSaveStages}
+            onAssignRandomRoles={handleAssignRandomRoles}
+            onAssignManualRole={handleAssignManualRole}
             onStartSession={handleStartSession}
             onFinishSession={handleFinishSession}
             onDeleteSession={handleDeleteSession}

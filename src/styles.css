@@ -495,3 +495,97 @@ button {
     font-size: 1.8rem;
   }
 }
+
+.session-setup-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.setup-toolbar,
+.setup-badge-row {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+}
+
+.subtle-status-pill {
+  background: #e7f6eb;
+  color: #1f5138;
+}
+
+.stage-count-field {
+  max-width: 240px;
+}
+
+.compact-field span {
+  font-size: 0.92rem;
+}
+
+.stage-editors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.stage-editor-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid #d7eadb;
+  background: #fbfffc;
+}
+
+.stage-editor-header {
+  display: grid;
+  gap: 4px;
+}
+
+.stage-editor-hint,
+.stage-editor-description,
+.participant-role-subtitle {
+  margin: 0;
+  color: #5a7367;
+}
+
+.stage-editor-grid,
+.participant-role-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.participant-role-card {
+  gap: 16px;
+}
+
+.role-management-list {
+  grid-template-columns: 1fr;
+}
+
+.participant-role-form .primary-button {
+  align-self: end;
+}
+
+@media (max-width: 900px) {
+  .stage-editors,
+  .stage-editor-grid,
+  .participant-role-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .setup-toolbar,
+  .setup-badge-row {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .stage-count-field {
+    max-width: none;
+  }
+}

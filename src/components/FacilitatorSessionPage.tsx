@@ -1,7 +1,9 @@
 import type { ChangeEvent, FormEvent } from 'react';
 import BrandHeader from './BrandHeader';
+import SessionSetupPanel from './SessionSetupPanel';
 import type {
   GameSessionParticipantsResponse,
+  GameSessionStageSettingsRequest,
   GameSessionSummary,
 } from '../types/app';
 
@@ -11,6 +13,9 @@ interface FacilitatorSessionPageProps {
   loading: boolean;
   sessionsLoading: boolean;
   actionSessionCode: string;
+  setupLoading: boolean;
+  randomAssignmentLoading: boolean;
+  roleAssignmentParticipantId: number | null;
   error: string;
   session: GameSessionParticipantsResponse | null;
   sessions: GameSessionSummary[];
@@ -19,6 +24,16 @@ interface FacilitatorSessionPageProps {
   onRefresh: () => void | Promise<void>;
   onRefreshSessions: () => void | Promise<void>;
   onOpenSession: (sessionCode: string) => void | Promise<void>;
+  onSaveStages: (
+    sessionCode: string,
+    request: GameSessionStageSettingsRequest,
+  ) => void | Promise<void>;
+  onAssignRandomRoles: (sessionCode: string) => void | Promise<void>;
+  onAssignManualRole: (
+    sessionCode: string,
+    participantId: number,
+    gameRole: string,
+  ) => void | Promise<void>;
   onStartSession: (sessionCode: string) => void | Promise<void>;
   onFinishSession: (sessionCode: string) => void | Promise<void>;
   onDeleteSession: (sessionCode: string) => void | Promise<void>;
@@ -31,6 +46,9 @@ function FacilitatorSessionPage({
   loading,
   sessionsLoading,
   actionSessionCode,
+  setupLoading,
+  randomAssignmentLoading,
+  roleAssignmentParticipantId,
   error,
   session,
   sessions,
@@ -39,6 +57,9 @@ function FacilitatorSessionPage({
   onRefresh,
   onRefreshSessions,
   onOpenSession,
+  onSaveStages,
+  onAssignRandomRoles,
+  onAssignManualRole,
   onStartSession,
   onFinishSession,
   onDeleteSession,
@@ -99,6 +120,7 @@ function FacilitatorSessionPage({
 
                   <div className="session-card-metrics">
                     <span>Игроков: {sessionItem.participantCount}</span>
+                    <span>Этапов: {sessionItem.stageCount}</span>
                   </div>
 
                   <div className="session-card-actions session-card-actions--four">
@@ -183,7 +205,22 @@ function FacilitatorSessionPage({
               <span>Участники</span>
               <strong>{session.participants.length}</strong>
             </article>
+            <article className="info-card">
+              <span>Этапы</span>
+              <strong>{session.stages.length}</strong>
+            </article>
           </div>
+
+          <SessionSetupPanel
+            session={session}
+            loading={loading}
+            randomAssignmentLoading={randomAssignmentLoading}
+            savingStages={setupLoading}
+            roleAssignmentParticipantId={roleAssignmentParticipantId}
+            onSaveStages={onSaveStages}
+            onAssignRandomRoles={onAssignRandomRoles}
+            onAssignManualRole={onAssignManualRole}
+          />
 
           <div className="participants-panel">
             <div className="participants-panel-header">
