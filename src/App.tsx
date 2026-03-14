@@ -15,6 +15,7 @@ import {
   finishGameSession,
   startGameSession,
 } from './services/gameSessionsApi';
+import { createBasicAuthHeader, fetchStaffProfile } from './services/staffAuthApi';
 import { usePlayerSession } from './hooks/usePlayerSession';
 import type { Mode, PlayerFormState, StaffFormState } from './types/app';
 
@@ -31,6 +32,7 @@ function App() {
     password: '',
   });
   const [staffError, setStaffError] = useState('');
+  const [staffAuthHeader, setStaffAuthHeader] = useState('');
   const [facilitatorSessionCode, setFacilitatorSessionCode] = useState('');
   const [facilitatorActionCode, setFacilitatorActionCode] = useState('');
   const [facilitatorActionError, setFacilitatorActionError] = useState('');
@@ -40,12 +42,12 @@ function App() {
   const { sessionsState, loadSessions, resetSessions } = useGameSessionsList();
 
   useEffect(() => {
-    if (!isFacilitatorWorkspaceOpen) {
+    if (!isFacilitatorWorkspaceOpen || !staffAuthHeader) {
       return;
     }
 
-    void loadSessions();
-  }, [isFacilitatorWorkspaceOpen]);
+    void loadSessions(staffAuthHeader);
+  }, [isFacilitatorWorkspaceOpen, staffAuthHeader]);
 
   const updatePlayerForm = (field: keyof PlayerFormState, value: string): void => {
     setPlayerForm((current) => ({ ...current, [field]: value }));
@@ -61,7 +63,7 @@ function App() {
     await joinSession(playerForm);
   };
 
-  const handleStaffSubmit = (event: FormEvent<HTMLFormElement>): void => {
+  const handleStaffSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
 
     const trimmedLogin = staffForm.login.trim();
@@ -73,58 +75,97 @@ function App() {
     }
 
     if (staffForm.profile === 'superuser') {
-      setStaffError('Экран суперпользователя добавим следующим шагом. Сейчас доступна панель ведущего.');
+      setStaffError('Для суперпользователя backend-авторизацию добавим следующим шагом. Сейчас доступен тестовый ведущий.');
       return;
     }
 
-    setStaffError('');
-    setFacilitatorActionError('');
-    setIsFacilitatorWorkspaceOpen(true);
+    try {
+      const authHeader = createBasicAuthHeader(trimmedLogin, trimmedPassword);
+      const profile = await fetchStaffProfile(authHeader);
+
+      if (profile.systemRole !== 'FACILITATOR') {
+        setStaffError('Эта учётная запись не относится к ведущему.');
+        return;
+      }
+
+      setStaffError('');
+      setFacilitatorActionError('');
+      setStaffAuthHeader(authHeader);
+      setIsFacilitatorWorkspaceOpen(true);
+    } catch (error) {
+      setStaffError(error instanceof Error ? error.message : 'Не удалось выполнить вход.');
+    }
   };
 
   const handleLookupSession = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    setFacilitatorActionError('');
-    await loadSession(facilitatorSessionCode);
-  };
 
-  const handleRefreshSession = async (): Promise<void> => {
-    if (!facilitatorSessionCode.trim()) {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
       return;
     }
 
     setFacilitatorActionError('');
-    await loadSession(facilitatorSessionCode);
+    await loadSession(facilitatorSessionCode, staffAuthHeader);
+  };
+
+  const handleRefreshSession = async (): Promise<void> => {
+    if (!facilitatorSessionCode.trim() || !staffAuthHeader) {
+      return;
+    }
+
+    setFacilitatorActionError('');
+    await loadSession(facilitatorSessionCode, staffAuthHeader);
   };
 
   const handleRefreshSessions = async (): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
     setFacilitatorActionError('');
-    await loadSessions();
+    await loadSessions(staffAuthHeader);
   };
 
   const handleOpenSession = async (sessionCode: string): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
     setFacilitatorActionError('');
     setFacilitatorSessionCode(sessionCode);
-    await loadSession(sessionCode);
+    await loadSession(sessionCode, staffAuthHeader);
   };
 
   const syncAfterSessionMutation = async (sessionCode: string): Promise<void> => {
-    await loadSessions();
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    await loadSessions(staffAuthHeader);
 
     if (
       overviewState.session?.sessionCode === sessionCode ||
       facilitatorSessionCode === sessionCode
     ) {
-      await loadSession(sessionCode);
+      await loadSession(sessionCode, staffAuthHeader);
     }
   };
 
   const handleStartSession = async (sessionCode: string): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
     setFacilitatorActionCode(sessionCode);
     setFacilitatorActionError('');
 
     try {
-      await startGameSession(sessionCode);
+      await startGameSession(sessionCode, staffAuthHeader);
       await syncAfterSessionMutation(sessionCode);
     } catch (error) {
       setFacilitatorActionError(
@@ -136,11 +177,16 @@ function App() {
   };
 
   const handleFinishSession = async (sessionCode: string): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
     setFacilitatorActionCode(sessionCode);
     setFacilitatorActionError('');
 
     try {
-      await finishGameSession(sessionCode);
+      await finishGameSession(sessionCode, staffAuthHeader);
       await syncAfterSessionMutation(sessionCode);
     } catch (error) {
       setFacilitatorActionError(
@@ -152,6 +198,11 @@ function App() {
   };
 
   const handleDeleteSession = async (sessionCode: string): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
     const shouldDelete = window.confirm(
       `Удалить сессию ${sessionCode} вместе с её участниками?`,
     );
@@ -164,8 +215,8 @@ function App() {
     setFacilitatorActionError('');
 
     try {
-      await deleteGameSession(sessionCode);
-      await loadSessions();
+      await deleteGameSession(sessionCode, staffAuthHeader);
+      await loadSessions(staffAuthHeader);
 
       if (
         overviewState.session?.sessionCode === sessionCode ||
@@ -190,10 +241,12 @@ function App() {
 
   const handleCloseFacilitatorWorkspace = (): void => {
     setIsFacilitatorWorkspaceOpen(false);
+    setStaffAuthHeader('');
     setFacilitatorSessionCode('');
     setFacilitatorActionCode('');
     setFacilitatorActionError('');
     setStaffError('');
+    setStaffForm((current) => ({ ...current, password: '' }));
     resetOverview();
     resetSessions();
   };

@@ -20,6 +20,11 @@ export interface StaffFormState {
   password: string;
 }
 
+export interface StaffProfile {
+  login: string;
+  systemRole: string;
+}
+
 export interface PlayerSessionJoinRequest {
   displayName: string;
   hospitalPosition: string;

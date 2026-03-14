@@ -13,11 +13,11 @@ export function useGameSessionsList() {
     initialSessionsListState,
   );
 
-  const loadSessions = async (): Promise<void> => {
+  const loadSessions = async (authHeader: string): Promise<void> => {
     setSessionsState((current) => ({ ...current, loading: true, error: '' }));
 
     try {
-      const payload = await fetchGameSessions();
+      const payload = await fetchGameSessions(authHeader);
 
       startTransition(() => {
         setSessionsState({

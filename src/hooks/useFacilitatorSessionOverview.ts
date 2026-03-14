@@ -13,11 +13,11 @@ export function useFacilitatorSessionOverview() {
     initialSessionOverviewState,
   );
 
-  const loadSession = async (sessionCode: string): Promise<void> => {
+  const loadSession = async (sessionCode: string, authHeader: string): Promise<void> => {
     setOverviewState((current) => ({ ...current, loading: true, error: '' }));
 
     try {
-      const payload = await fetchGameSessionParticipants(sessionCode.trim());
+      const payload = await fetchGameSessionParticipants(sessionCode.trim(), authHeader);
 
       startTransition(() => {
         setOverviewState({

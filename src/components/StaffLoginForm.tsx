@@ -5,7 +5,7 @@ import type { StaffFormState } from '../types/app';
 interface StaffLoginFormProps {
   formState: StaffFormState;
   onChange: (field: keyof StaffFormState, value: string) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   error: string;
 }
 
