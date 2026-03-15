@@ -130,31 +130,6 @@ function App() {
   }, [mode, joinState.session]);
 
   useEffect(() => {
-    if (
-      joinState.session
-      || !playerForm.sessionCode
-      || availableSessionsState.loading
-      || availableSessionsState.error
-    ) {
-      return;
-    }
-
-    const sessionStillAvailable = availableSessionsState.sessions.some(
-      (session) => session.sessionCode === playerForm.sessionCode,
-    );
-
-    if (!sessionStillAvailable) {
-      setPlayerForm((current) => ({ ...current, sessionCode: '' }));
-    }
-  }, [
-    joinState.session,
-    playerForm.sessionCode,
-    availableSessionsState.loading,
-    availableSessionsState.error,
-    availableSessionsState.sessions,
-  ]);
-
-  useEffect(() => {
     if (!joinState.session) {
       setPlayerWorkspaceState(initialPlayerWorkspaceState);
       return;

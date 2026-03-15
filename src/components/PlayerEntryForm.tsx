@@ -39,8 +39,8 @@ function PlayerEntryForm({
         <p className="section-kicker">Регистрация участника</p>
         <h2>Подключение к сессии</h2>
         <p>
-          Укажите имя, реальную должность и выберите созданную ведущим игровую
-          сессию.
+          Укажите имя, реальную должность и выберите комнату из списка или введите код сессии вручную,
+          если нужно вернуться в уже начатую игру.
         </p>
       </div>
 
@@ -48,7 +48,7 @@ function PlayerEntryForm({
         <div className="participants-panel-header">
           <div>
             <p className="section-kicker">Доступные сессии</p>
-            <h3>Выберите комнату для подключения</h3>
+            <h3>Выберите комнату или возьмите её код</h3>
           </div>
 
           <button type="button" className="secondary-button" onClick={onRefreshSessions}>
@@ -114,25 +114,27 @@ function PlayerEntryForm({
       </label>
 
       <label className="field">
-        <span>Выбранная сессия</span>
-        <select
+        <span>Код сессии</span>
+        <input
+          type="text"
+          placeholder="Например, FBPR-03"
           value={formState.sessionCode}
           onChange={handleInputChange('sessionCode')}
-        >
-          <option value="">Выберите доступную сессию</option>
-          {availableSessions.map((session) => (
-            <option key={session.sessionId} value={session.sessionCode}>
-              {session.sessionName} ({session.sessionCode})
-            </option>
-          ))}
-        </select>
+        />
       </label>
 
       {selectedSession ? (
         <div className="waiting-note compact-note">
           <p>
-            Вы выбрали сессию <strong>{selectedSession.sessionName}</strong> с кодом{' '}
+            Выбрана сессия <strong>{selectedSession.sessionName}</strong> с кодом{' '}
             <strong>{selectedSession.sessionCode}</strong>.
+          </p>
+        </div>
+      ) : formState.sessionCode.trim() ? (
+        <div className="waiting-note compact-note">
+          <p>
+            Введён код <strong>{formState.sessionCode.trim().toUpperCase()}</strong>. Если вы уже участвовали в этой
+            сессии, вход выполнится даже после её старта.
           </p>
         </div>
       ) : null}
