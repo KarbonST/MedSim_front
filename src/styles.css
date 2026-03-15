@@ -328,6 +328,45 @@ button {
   font-size: 1.5rem;
 }
 
+.collapsible-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.collapsible-section-trigger {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  text-align: left;
+}
+
+.collapsible-section-trigger h3 {
+  margin: 8px 0 0;
+}
+
+.collapsible-section-side {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.collapsible-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .session-card {
   gap: 14px;
 }
@@ -501,6 +540,9 @@ button {
   }
 
   .participants-panel-header,
+  .collapsible-section-header,
+  .collapsible-section-trigger,
+  .collapsible-section-side,
   .room-hero,
   .session-card-header {
     flex-direction: column;
@@ -510,6 +552,19 @@ button {
   .back-button,
   .session-lookup .primary-button,
   .participants-panel .secondary-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .collapsible-section-side {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .collapsible-section-side .secondary-button,
+  .collapsible-section-side .primary-button,
+  .collapsible-section-side .danger-button {
     width: 100%;
   }
 }

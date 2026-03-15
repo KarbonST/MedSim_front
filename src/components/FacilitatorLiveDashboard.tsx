@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { GameSessionParticipantsResponse, SessionParticipantSummary } from '../types/app';
 import { getSessionStatusLabel } from '../constants/sessionStatuses';
+import CollapsibleSection from './CollapsibleSection';
 
 interface FacilitatorLiveDashboardProps {
   session: GameSessionParticipantsResponse;
@@ -37,17 +38,17 @@ function FacilitatorLiveDashboard({ session, loading }: FacilitatorLiveDashboard
 
   return (
     <div className="session-setup-stack facilitator-live-stack">
-      <div className="participants-panel facilitator-live-panel">
-        <div className="participants-panel-header">
-          <div>
-            <p className="section-kicker">Мониторинг игры</p>
-            <h3>Команды после старта</h3>
-          </div>
+      <CollapsibleSection
+        kicker="Мониторинг игры"
+        title="Команды после старта"
+        className="facilitator-live-panel"
+        defaultExpanded
+        badge={(
           <span className="status-pill subtle-status-pill">
             {loading ? 'Обновление...' : `Активных команд: ${session.teams.length}`}
           </span>
-        </div>
-
+        )}
+      >
         <div className="waiting-note">
           <p>
             После старта команды работают изолированно. Здесь отображается сводка по всем командам и доступен быстрый переход к составу каждой команды без перехода в экран конкретного игрока.
@@ -84,18 +85,16 @@ function FacilitatorLiveDashboard({ session, loading }: FacilitatorLiveDashboard
             );
           })}
         </div>
-      </div>
+      </CollapsibleSection>
 
       {selectedTeam ? (
-        <div className="participants-panel facilitator-live-panel">
-          <div className="participants-panel-header">
-            <div>
-              <p className="section-kicker">Детали команды</p>
-              <h3>{selectedTeam.teamName}</h3>
-            </div>
-            <span className="status-pill subtle-status-pill">Участников: {selectedTeamParticipants.length}</span>
-          </div>
-
+        <CollapsibleSection
+          kicker="Детали команды"
+          title={selectedTeam.teamName}
+          className="facilitator-live-panel"
+          defaultExpanded={false}
+          badge={<span className="status-pill subtle-status-pill">Участников: {selectedTeamParticipants.length}</span>}
+        >
           <div className="room-grid facilitator-monitoring-grid">
             <article className="info-card">
               <span>Код сессии</span>
@@ -139,7 +138,7 @@ function FacilitatorLiveDashboard({ session, loading }: FacilitatorLiveDashboard
               </article>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
       ) : null}
     </div>
   );

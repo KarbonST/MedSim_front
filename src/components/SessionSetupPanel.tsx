@@ -9,6 +9,7 @@ import type {
   SessionStageSetting,
   StageInteractionMode,
 } from '../types/app';
+import CollapsibleSection from './CollapsibleSection';
 
 interface SessionSetupPanelProps {
   session: GameSessionParticipantsResponse;
@@ -237,13 +238,11 @@ function SessionSetupPanel({
 
   return (
     <div className="session-setup-stack">
-      <div className="participants-panel">
-        <div className="participants-panel-header">
-          <div>
-            <p className="section-kicker">Команды</p>
-            <h3>Состав и настройка команд</h3>
-          </div>
-
+      <CollapsibleSection
+        kicker="Команды"
+        title="Состав и настройка команд"
+        defaultExpanded
+        actions={(
           <button
             type="button"
             className="secondary-button"
@@ -254,8 +253,8 @@ function SessionSetupPanel({
           >
             {autoTeamAssignmentLoading ? 'Распределение...' : 'Распределить по командам'}
           </button>
-        </div>
-
+        )}
+      >
         <div className="waiting-note">
           <p>
             Здесь доступны переименование команд и распределение игроков. При запуске автораспределения участники распределятся по командам максимально равномерно.
@@ -312,22 +311,18 @@ function SessionSetupPanel({
             );
           })}
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="participants-panel">
-        <div className="participants-panel-header">
-          <div>
-            <p className="section-kicker">Параметры игры</p>
-            <h3>Настройка этапов сессии</h3>
-          </div>
-
-          <div className="setup-badge-row">
-            <span className="status-pill subtle-status-pill">
-              Этапов: {stageDrafts.length}
-            </span>
-          </div>
-        </div>
-
+      <CollapsibleSection
+        kicker="Параметры игры"
+        title="Настройка этапов сессии"
+        defaultExpanded={false}
+        badge={(
+          <span className="status-pill subtle-status-pill">
+            Этапов: {stageDrafts.length}
+          </span>
+        )}
+      >
         <div className="setup-toolbar">
           <label className="field compact-field stage-count-field">
             <span>Количество этапов</span>
@@ -416,15 +411,13 @@ function SessionSetupPanel({
             </article>
           ))}
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="participants-panel">
-        <div className="participants-panel-header">
-          <div>
-            <p className="section-kicker">Игровые роли</p>
-            <h3>Распределение по участникам</h3>
-          </div>
-
+      <CollapsibleSection
+        kicker="Игровые роли"
+        title="Распределение по участникам"
+        defaultExpanded={false}
+        actions={(
           <button
             type="button"
             className="secondary-button"
@@ -435,8 +428,8 @@ function SessionSetupPanel({
           >
             {randomAssignmentLoading ? 'Распределение...' : 'Распределить роли случайно'}
           </button>
-        </div>
-
+        )}
+      >
         <div className="waiting-note">
           <p>
             Сначала распределите участников по командам, а затем выдавайте роли. При автораспределении автоматически назначатся главный врач, главная медсестра и главный инженер, а совпадения с реальной должностью игрока будут исключены. Для этого в командах должно быть минимум 3 уже распределённых участника.
@@ -580,7 +573,7 @@ function SessionSetupPanel({
             );
           })}
         </div>
-      </div>
+      </CollapsibleSection>
     </div>
   );
 }

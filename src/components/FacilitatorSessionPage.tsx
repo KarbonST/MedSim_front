@@ -11,6 +11,7 @@ import { getSessionStatusLabel } from '../constants/sessionStatuses';
 import { formatRuntimeDuration, getInteractionModeLabel, getRuntimeRemainingSeconds, getTimerStatusLabel } from '../lib/sessionRuntime';
 import FacilitatorLiveDashboard from './FacilitatorLiveDashboard';
 import SessionSetupPanel from './SessionSetupPanel';
+import CollapsibleSection from './CollapsibleSection';
 
 interface FacilitatorSessionPageProps {
   login: string;
@@ -57,10 +58,6 @@ interface FacilitatorSessionPageProps {
   onStartRuntimeTimer: (sessionCode: string) => void | Promise<void>;
   onPauseRuntimeTimer: (sessionCode: string) => void | Promise<void>;
   onResetRuntimeTimer: (sessionCode: string) => void | Promise<void>;
-  onSelectRuntimeStage: (sessionCode: string, stageNumber: number) => void | Promise<void>;
-  onStartRuntimeTimer: (sessionCode: string) => void | Promise<void>;
-  onPauseRuntimeTimer: (sessionCode: string) => void | Promise<void>;
-  onResetRuntimeTimer: (sessionCode: string) => void | Promise<void>;
   onStartSession: (sessionCode: string) => void | Promise<void>;
   onPauseSession: (sessionCode: string) => void | Promise<void>;
   onFinishSession: (sessionCode: string) => void | Promise<void>;
@@ -82,13 +79,6 @@ interface SessionControlPanelProps {
 
 function sortStages(stages: SessionStageSetting[]): SessionStageSetting[] {
   return [...stages].sort((left, right) => left.stageNumber - right.stageNumber);
-}
-
-function formatDuration(totalSeconds: number): string {
-  const safeSeconds = Math.max(totalSeconds, 0);
-  const minutes = Math.floor(safeSeconds / 60);
-  const seconds = safeSeconds % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 function SessionControlPanel({
@@ -157,18 +147,16 @@ function SessionControlPanel({
   const startPendingLabel = session.sessionStatus === 'PAUSED' ? 'Возобновление...' : 'Запуск...';
 
   return (
-    <div className="participants-panel session-control-panel">
-      <div className="participants-panel-header">
-        <div>
-          <p className="section-kicker">Управление сессией</p>
-          <h3>Таймер, этапы и запуск игры</h3>
-        </div>
-        <span className="status-pill subtle-status-pill">Статус: {getSessionStatusLabel(session.sessionStatus)}</span>
-      </div>
-
+    <CollapsibleSection
+      kicker="Управление сессией"
+      title="Таймер, этапы и запуск игры"
+      className="session-control-panel"
+      defaultExpanded={session.sessionStatus !== 'LOBBY'}
+      badge={<span className="status-pill subtle-status-pill">Статус: {getSessionStatusLabel(session.sessionStatus)}</span>}
+    >
       <div className="waiting-note">
         <p>
-          Здесь отображается общий этап игры и единый таймер сессии. Тот же этап и тот же отсчёт будут видны участникам на командных экранах.
+          Здесь отображается общий этап игры и единый таймер сессии. Те же этап и отсчёт будут видны участникам на командных экранах.
         </p>
       </div>
 
@@ -292,7 +280,7 @@ function SessionControlPanel({
           </div>
         </div>
       </div>
-    </div>
+    </CollapsibleSection>
   );
 }
 
@@ -394,14 +382,12 @@ function FacilitatorSessionPage({
         <span className="status-pill">Ведущий</span>
       </div>
 
-      <div className="participants-panel session-create-panel">
-        <div className="participants-panel-header">
-          <div>
-            <p className="section-kicker">Новая сессия</p>
-            <h3>Создание игровой комнаты</h3>
-          </div>
-        </div>
-
+      <CollapsibleSection
+        kicker="Новая сессия"
+        title="Создание игровой комнаты"
+        className="session-create-panel"
+        defaultExpanded={false}
+      >
         <form className="session-create-form" onSubmit={handleCreateSession}>
           <label className="field">
             <span>Название сессии</span>
@@ -438,20 +424,19 @@ function FacilitatorSessionPage({
             Укажите название и количество команд. Код сессии и стартовые названия сформируются автоматически. После создания станут доступны распределение игроков, настройка этапов и назначение ролей.
           </p>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="participants-panel sessions-board">
-        <div className="participants-panel-header">
-          <div>
-            <p className="section-kicker">Активные сессии</p>
-            <h3>Управление игровыми комнатами</h3>
-          </div>
-
+      <CollapsibleSection
+        kicker="Активные сессии"
+        title="Управление игровыми комнатами"
+        className="sessions-board"
+        defaultExpanded
+        actions={(
           <button type="button" className="secondary-button" onClick={onRefreshSessions}>
             {sessionsLoading ? 'Обновление...' : 'Обновить сессии'}
           </button>
-        </div>
-
+        )}
+      >
         {sessions.length ? (
           <div className="session-cards">
             {sessions.map((sessionItem) => {
@@ -506,17 +491,15 @@ function FacilitatorSessionPage({
             <p>Создайте первую игровую комнату, чтобы перейти к настройке команд, этапов и ролей.</p>
           </div>
         )}
-      </div>
+      </CollapsibleSection>
 
       {session ? (
-        <div className="participants-panel session-rename-inline-panel">
-          <div className="participants-panel-header">
-            <div>
-              <p className="section-kicker">Активная сессия</p>
-              <h3>{isLobby ? 'Название и состояние комнаты' : 'Состояние запущенной игры'}</h3>
-            </div>
-          </div>
-
+        <CollapsibleSection
+          kicker="Активная сессия"
+          title={isLobby ? 'Название и состояние комнаты' : 'Состояние запущенной игры'}
+          className="session-rename-inline-panel"
+          defaultExpanded
+        >
           <div className="room-grid facilitator-summary-grid">
             <article className="info-card">
               <span>Сессия</span>
@@ -567,7 +550,7 @@ function FacilitatorSessionPage({
               {renamingSession ? 'Сохранение...' : 'Сохранить название'}
             </button>
           </div>
-        </div>
+        </CollapsibleSection>
       ) : null}
 
       {error ? <p className="form-error">{error}</p> : null}

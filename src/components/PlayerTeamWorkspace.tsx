@@ -3,6 +3,7 @@ import type { PlayerTeamWorkspace } from '../types/app';
 import BrandHeader from './BrandHeader';
 import { getSessionStatusLabel } from '../constants/sessionStatuses';
 import { formatRuntimeDuration, getInteractionModeLabel, getRuntimeRemainingSeconds, getTimerStatusLabel } from '../lib/sessionRuntime';
+import CollapsibleSection from './CollapsibleSection';
 
 interface PlayerTeamWorkspaceProps {
   workspace: PlayerTeamWorkspace;
@@ -57,17 +58,17 @@ function PlayerTeamWorkspaceScreen({
         <span className="status-pill">{getSessionStatusLabel(workspace.sessionStatus)}</span>
       </div>
 
-      <div className="participants-panel player-runtime-panel">
-        <div className="participants-panel-header">
-          <div>
-            <p className="section-kicker">Ход игры</p>
-            <h3>Текущий этап и время</h3>
-          </div>
+      <CollapsibleSection
+        kicker="Ход игры"
+        title="Текущий этап и время"
+        className="player-runtime-panel"
+        defaultExpanded
+        badge={(
           <span className="status-pill subtle-status-pill runtime-status-pill">
             {getTimerStatusLabel(workspace.sessionRuntime.timerStatus)}
           </span>
-        </div>
-
+        )}
+      >
         <div className="player-runtime-grid">
           <article className="info-card player-runtime-card">
             <span>Текущий этап</span>
@@ -82,26 +83,32 @@ function PlayerTeamWorkspaceScreen({
             <strong>{getInteractionModeLabel(workspace.sessionRuntime.activeStageInteractionMode)}</strong>
           </article>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="room-grid">
-        <article className="info-card">
-          <span>Код сессии</span>
-          <strong>{workspace.sessionCode}</strong>
-        </article>
-        <article className="info-card">
-          <span>Участник</span>
-          <strong>{workspace.displayName}</strong>
-        </article>
-        <article className="info-card">
-          <span>Команда</span>
-          <strong>{workspace.teamName ?? 'Команда пока не назначена'}</strong>
-        </article>
-        <article className="info-card">
-          <span>Игровая роль</span>
-          <strong>{workspace.gameRole ?? 'Роль назначается ведущим'}</strong>
-        </article>
-      </div>
+      <CollapsibleSection
+        kicker="Информация о сессии"
+        title="Код, участник и роль"
+        defaultExpanded={false}
+      >
+        <div className="room-grid">
+          <article className="info-card">
+            <span>Код сессии</span>
+            <strong>{workspace.sessionCode}</strong>
+          </article>
+          <article className="info-card">
+            <span>Участник</span>
+            <strong>{workspace.displayName}</strong>
+          </article>
+          <article className="info-card">
+            <span>Команда</span>
+            <strong>{workspace.teamName ?? 'Команда пока не назначена'}</strong>
+          </article>
+          <article className="info-card">
+            <span>Игровая роль</span>
+            <strong>{workspace.gameRole ?? 'Роль назначается ведущим'}</strong>
+          </article>
+        </div>
+      </CollapsibleSection>
 
       {!hasTeam ? (
         <div className="waiting-note">
@@ -114,15 +121,12 @@ function PlayerTeamWorkspaceScreen({
         </div>
       ) : (
         <>
-          <div className="participants-panel">
-            <div className="participants-panel-header">
-              <div>
-                <p className="section-kicker">Состав команды</p>
-                <h3>Только ваша команда</h3>
-              </div>
-              <span className="status-pill subtle-status-pill">Участников: {workspace.teammates.length}</span>
-            </div>
-
+          <CollapsibleSection
+            kicker="Состав команды"
+            title="Только ваша команда"
+            defaultExpanded
+            badge={<span className="status-pill subtle-status-pill">Участников: {workspace.teammates.length}</span>}
+          >
             <div className="participants-list workspace-members-list">
               {workspace.teammates.map((member, index) => (
                 <article
@@ -152,16 +156,13 @@ function PlayerTeamWorkspaceScreen({
                 </article>
               ))}
             </div>
-          </div>
+          </CollapsibleSection>
 
-          <div className="participants-panel">
-            <div className="participants-panel-header">
-              <div>
-                <p className="section-kicker">Этапы игры</p>
-                <h3>Текущая конфигурация сессии</h3>
-              </div>
-            </div>
-
+          <CollapsibleSection
+            kicker="Этапы игры"
+            title="Текущая конфигурация сессии"
+            defaultExpanded={false}
+          >
             <div className="stage-editors workspace-stage-list">
               {workspace.stages.map((stage) => (
                 <article key={stage.stageNumber} className="stage-editor-card workspace-stage-card">
@@ -177,7 +178,7 @@ function PlayerTeamWorkspaceScreen({
                 </article>
               ))}
             </div>
-          </div>
+          </CollapsibleSection>
 
           <div className="waiting-note">
             <p>
