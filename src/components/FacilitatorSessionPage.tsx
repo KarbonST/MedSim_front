@@ -155,12 +155,17 @@ function SessionControlPanel({
     })
     .filter((team) => team.missingLeadershipRoles.length > 0);
   const canStartGame =
-    session.sessionStatus === 'LOBBY' &&
-    hasSavedStages &&
-    unassignedParticipantsCount === 0 &&
-    teamsMissingLeadership.length === 0;
-  const canFinishGame = session.sessionStatus === 'IN_PROGRESS';
+    (session.sessionStatus === 'LOBBY' &&
+      hasSavedStages &&
+      unassignedParticipantsCount === 0 &&
+      teamsMissingLeadership.length === 0)
+    || session.sessionStatus === 'PAUSED';
+  const canPauseGame = session.sessionStatus === 'IN_PROGRESS';
+  const canFinishGame = session.sessionStatus === 'IN_PROGRESS' || session.sessionStatus === 'PAUSED';
   const shouldShowTimerTools = session.sessionStatus !== 'LOBBY';
+  const isRunning = session.sessionStatus === 'IN_PROGRESS';
+  const startButtonLabel = session.sessionStatus === 'PAUSED' ? 'Продолжить игру' : 'Начать игру';
+  const startPendingLabel = session.sessionStatus === 'PAUSED' ? 'Возобновление...' : 'Запуск...';
 
   const selectStage = (stage: SessionStageSetting): void => {
     setSelectedStageNumber(stage.stageNumber);
@@ -189,8 +194,7 @@ function SessionControlPanel({
 
       <div className="waiting-note">
         <p>
-          Здесь ведущий управляет выбранной игровой комнатой. Переход в сессию из списка больше не запускает игру сразу,
-          а только открывает рабочее пространство для контроля этапов и старта.
+          Рабочее пространство этой сессии открыто. Здесь доступны настройка этапов, управление таймером и запуск игры после полной подготовки.
         </p>
       </div>
 
@@ -288,7 +292,15 @@ function SessionControlPanel({
                 onClick={() => onStartSession(session.sessionCode)}
                 disabled={!canStartGame || isActionPending}
               >
-                {isActionPending && canStartGame ? 'Запуск...' : 'Начать игру'}
+                {isActionPending && canStartGame ? startPendingLabel : startButtonLabel}
+              </button>
+              <button
+                type="button"
+                className="secondary-button compact-button"
+                onClick={() => onPauseSession(session.sessionCode)}
+                disabled={!canPauseGame || isActionPending}
+              >
+                {isActionPending && canPauseGame ? 'Пауза...' : 'Приостановить игру'}
               </button>
               <button
                 type="button"
@@ -296,7 +308,7 @@ function SessionControlPanel({
                 onClick={() => onFinishSession(session.sessionCode)}
                 disabled={!canFinishGame || isActionPending}
               >
-                {isActionPending && canFinishGame ? 'Завершение...' : 'Остановить игру'}
+                {isActionPending && canFinishGame ? 'Завершение...' : 'Завершить игру'}
               </button>
             </div>
           </div>
@@ -441,8 +453,7 @@ function FacilitatorSessionPage({
 
         <div className="waiting-note compact-note">
           <p>
-            Код сессии и стартовые названия команд формируются автоматически. После создания комнаты ведущий сможет
-            настроить состав команд, роли и этапы, а после старта перейти к мониторингу команд в реальном времени.
+            Укажите название и количество команд. Код сессии и стартовые названия сформируются автоматически. После создания станут доступны распределение игроков, настройка этапов и назначение ролей.
           </p>
         </div>
       </div>
@@ -510,7 +521,7 @@ function FacilitatorSessionPage({
           </div>
         ) : (
           <div className="waiting-note facilitator-empty-state">
-            <p>Сессий пока нет. Сначала создайте игровую комнату вручную.</p>
+            <p>Создайте первую игровую комнату, чтобы перейти к настройке команд, этапов и ролей.</p>
           </div>
         )}
       </div>
@@ -577,43 +588,51 @@ function FacilitatorSessionPage({
         </div>
       ) : null}
 
-      {session ? (
-        <SessionControlPanel
-          session={session}
-          actionSessionCode={actionSessionCode}
-          onStartSession={onStartSession}
-          onFinishSession={onFinishSession}
-        />
-      ) : null}
-
       {error ? <p className="form-error">{error}</p> : null}
 
       {session ? (
         isLobby ? (
-          <SessionSetupPanel
-            session={session}
-            loading={loading}
-            autoTeamAssignmentLoading={autoTeamAssignmentLoading}
-            randomAssignmentLoading={randomAssignmentLoading}
-            savingStages={setupLoading}
-            teamRenameId={teamRenameId}
-            teamAssignmentParticipantId={teamAssignmentParticipantId}
-            roleAssignmentParticipantId={roleAssignmentParticipantId}
-            onRenameTeam={onRenameTeam}
-            onAutoAssignTeams={onAutoAssignTeams}
-            onAssignParticipantTeam={onAssignParticipantTeam}
-            onSaveStages={onSaveStages}
-            onAssignRandomRoles={onAssignRandomRoles}
-            onAssignManualRole={onAssignManualRole}
-          />
+          <>
+            <SessionSetupPanel
+              session={session}
+              loading={loading}
+              autoTeamAssignmentLoading={autoTeamAssignmentLoading}
+              randomAssignmentLoading={randomAssignmentLoading}
+              savingStages={setupLoading}
+              teamRenameId={teamRenameId}
+              teamAssignmentParticipantId={teamAssignmentParticipantId}
+              roleAssignmentParticipantId={roleAssignmentParticipantId}
+              onRenameTeam={onRenameTeam}
+              onAutoAssignTeams={onAutoAssignTeams}
+              onAssignParticipantTeam={onAssignParticipantTeam}
+              onSaveStages={onSaveStages}
+              onAssignRandomRoles={onAssignRandomRoles}
+              onAssignManualRole={onAssignManualRole}
+            />
+            <SessionControlPanel
+              session={session}
+              actionSessionCode={actionSessionCode}
+              onStartSession={onStartSession}
+              onPauseSession={onPauseSession}
+              onFinishSession={onFinishSession}
+            />
+          </>
         ) : (
-          <FacilitatorLiveDashboard session={session} loading={loading} />
+          <>
+            <FacilitatorLiveDashboard session={session} loading={loading} />
+            <SessionControlPanel
+              session={session}
+              actionSessionCode={actionSessionCode}
+              onStartSession={onStartSession}
+              onPauseSession={onPauseSession}
+              onFinishSession={onFinishSession}
+            />
+          </>
         )
       ) : (
         <div className="waiting-note facilitator-empty-state">
           <p>
-            Выберите нужную сессию из списка выше, чтобы настроить команды, этапы и роли, а после старта отслеживать
-            состояние команд в отдельном мониторинге.
+            Выберите сессию из списка выше. После этого станут доступны настройка команд, этапов и ролей, а затем и мониторинг игры.
           </p>
         </div>
       )}
