@@ -1,9 +1,10 @@
 import type { ChangeEvent, FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type {
   GameSessionParticipantsResponse,
   GameSessionStageSettingsRequest,
   GameSessionSummary,
+  SessionStageSetting,
 } from '../types/app';
 import BrandHeader from './BrandHeader';
 import FacilitatorLiveDashboard from './FacilitatorLiveDashboard';
@@ -54,6 +55,245 @@ interface FacilitatorSessionPageProps {
   onFinishSession: (sessionCode: string) => void | Promise<void>;
   onDeleteSession: (sessionCode: string) => void | Promise<void>;
   onBack: () => void;
+}
+
+interface SessionControlPanelProps {
+  session: GameSessionParticipantsResponse;
+  actionSessionCode: string;
+  onStartSession: (sessionCode: string) => void | Promise<void>;
+  onFinishSession: (sessionCode: string) => void | Promise<void>;
+}
+
+function sortStages(stages: SessionStageSetting[]): SessionStageSetting[] {
+  return [...stages].sort((left, right) => left.stageNumber - right.stageNumber);
+}
+
+function formatDuration(totalSeconds: number): string {
+  const safeSeconds = Math.max(totalSeconds, 0);
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function SessionControlPanel({
+  session,
+  actionSessionCode,
+  onStartSession,
+  onFinishSession,
+}: SessionControlPanelProps) {
+  const stages = useMemo(() => sortStages(session.stages), [session.stages]);
+  const stageSignature = stages.map((stage) => `${stage.stageNumber}:${stage.durationMinutes}:${stage.interactionMode}`).join('|');
+  const [selectedStageNumber, setSelectedStageNumber] = useState<number | null>(stages[0]?.stageNumber ?? null);
+  const [remainingSeconds, setRemainingSeconds] = useState(stages[0] ? stages[0].durationMinutes * 60 : 0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+
+  useEffect(() => {
+    if (!stages.length) {
+      setSelectedStageNumber(null);
+      setRemainingSeconds(0);
+      setIsTimerRunning(false);
+      return;
+    }
+
+    const firstStage = stages[0];
+    setSelectedStageNumber(firstStage.stageNumber);
+    setRemainingSeconds(firstStage.durationMinutes * 60);
+    setIsTimerRunning(false);
+  }, [session.sessionCode, stageSignature]);
+
+  useEffect(() => {
+    if (!isTimerRunning) {
+      return;
+    }
+
+    const timerId = window.setInterval(() => {
+      setRemainingSeconds((current) => {
+        if (current <= 1) {
+          window.clearInterval(timerId);
+          setIsTimerRunning(false);
+          return 0;
+        }
+
+        return current - 1;
+      });
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [isTimerRunning]);
+
+  const currentStage = stages.find((stage) => stage.stageNumber === selectedStageNumber) ?? stages[0] ?? null;
+  const isActionPending = actionSessionCode === session.sessionCode;
+  const hasSavedStages = stages.length > 0;
+  const leadershipRoles = ['Главный врач', 'Главная медсестра', 'Главный инженер'];
+  const unassignedParticipantsCount = session.participants.filter((participant) => participant.teamId == null).length;
+  const teamsMissingLeadership = session.teams
+    .map((team) => {
+      const teamRoles = session.participants
+        .filter((participant) => participant.teamId === team.teamId)
+        .map((participant) => participant.gameRole)
+        .filter((role): role is string => Boolean(role));
+      const missingLeadershipRoles = leadershipRoles.filter(
+        (role) => !teamRoles.some((assignedRole) => assignedRole.toLowerCase() === role.toLowerCase()),
+      );
+
+      return {
+        teamName: team.teamName,
+        missingLeadershipRoles,
+      };
+    })
+    .filter((team) => team.missingLeadershipRoles.length > 0);
+  const canStartGame =
+    session.sessionStatus === 'LOBBY' &&
+    hasSavedStages &&
+    unassignedParticipantsCount === 0 &&
+    teamsMissingLeadership.length === 0;
+  const canFinishGame = session.sessionStatus === 'IN_PROGRESS';
+  const shouldShowTimerTools = session.sessionStatus !== 'LOBBY';
+
+  const selectStage = (stage: SessionStageSetting): void => {
+    setSelectedStageNumber(stage.stageNumber);
+    setRemainingSeconds(stage.durationMinutes * 60);
+    setIsTimerRunning(false);
+  };
+
+  const handleResetTimer = (): void => {
+    if (!currentStage) {
+      return;
+    }
+
+    setRemainingSeconds(currentStage.durationMinutes * 60);
+    setIsTimerRunning(false);
+  };
+
+  return (
+    <div className="participants-panel session-control-panel">
+      <div className="participants-panel-header">
+        <div>
+          <p className="section-kicker">Управление сессией</p>
+          <h3>Таймер, этапы и запуск игры</h3>
+        </div>
+        <span className="status-pill subtle-status-pill">Статус: {session.sessionStatus}</span>
+      </div>
+
+      <div className="waiting-note">
+        <p>
+          Здесь ведущий управляет выбранной игровой комнатой. Переход в сессию из списка больше не запускает игру сразу,
+          а только открывает рабочее пространство для контроля этапов и старта.
+        </p>
+      </div>
+
+      <div className={shouldShowTimerTools ? 'session-control-grid' : 'session-control-grid session-control-grid--compact'}>
+        {shouldShowTimerTools ? (
+          <article className="info-card session-control-timer-card">
+            <span>Таймер этапа</span>
+            <strong className="stage-timer-display">{formatDuration(remainingSeconds)}</strong>
+            <p className="participant-role-subtitle">
+              {currentStage
+                ? `Этап ${currentStage.stageNumber}: ${currentStage.interactionMode === 'CHAT_ONLY' ? 'только чат' : 'чат и канбан'}`
+                : 'Сначала настройте этапы сессии'}
+            </p>
+          </article>
+        ) : null}
+
+        <div className="session-control-actions-card">
+          <div className="session-control-actions-block">
+            <span className="section-kicker">Этапы</span>
+            <div className="stage-selector-row">
+              {stages.length ? (
+                stages.map((stage) => {
+                  const isSelected = stage.stageNumber === currentStage?.stageNumber;
+                  return (
+                    <button
+                      key={stage.stageNumber}
+                      type="button"
+                      className={isSelected ? 'stage-selector-button active' : 'stage-selector-button'}
+                      onClick={() => selectStage(stage)}
+                    >
+                      Этап {stage.stageNumber}
+                    </button>
+                  );
+                })
+              ) : (
+                <p className="participant-role-subtitle">Этапы пока не настроены.</p>
+              )}
+            </div>
+          </div>
+
+          {shouldShowTimerTools ? (
+            <div className="session-control-actions-block">
+              <span className="section-kicker">Таймер</span>
+              <div className="session-control-actions-row">
+                <button
+                  type="button"
+                  className="primary-button compact-button"
+                  onClick={() => setIsTimerRunning(true)}
+                  disabled={!currentStage || isTimerRunning || remainingSeconds === 0}
+                >
+                  Пуск таймера
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button compact-button"
+                  onClick={() => setIsTimerRunning(false)}
+                  disabled={!isTimerRunning}
+                >
+                  Пауза
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button compact-button"
+                  onClick={handleResetTimer}
+                  disabled={!currentStage}
+                >
+                  Сбросить
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="session-control-actions-block">
+            <span className="section-kicker">Игра</span>
+            {!hasSavedStages ? (
+              <p className="participant-role-subtitle">
+                Сначала настройте и сохраните этапы, затем игру можно будет начать.
+              </p>
+            ) : null}
+            {hasSavedStages && unassignedParticipantsCount > 0 ? (
+              <p className="participant-role-subtitle">
+                Перед стартом распределите по командам всех игроков. Без команды сейчас: {unassignedParticipantsCount}.
+              </p>
+            ) : null}
+            {hasSavedStages && teamsMissingLeadership.length > 0 ? (
+              <p className="participant-role-subtitle">
+                Перед стартом в каждой команде должны быть назначены роли главного врача, главной медсестры и главного
+                инженера. Сейчас не хватает: {teamsMissingLeadership.map((team) => `${team.teamName} (${team.missingLeadershipRoles.join(', ')})`).join('; ')}.
+              </p>
+            ) : null}
+            <div className="session-control-actions-row">
+              <button
+                type="button"
+                className="primary-button compact-button"
+                onClick={() => onStartSession(session.sessionCode)}
+                disabled={!canStartGame || isActionPending}
+              >
+                {isActionPending && canStartGame ? 'Запуск...' : 'Начать игру'}
+              </button>
+              <button
+                type="button"
+                className="secondary-button finish-button compact-button"
+                onClick={() => onFinishSession(session.sessionCode)}
+                disabled={!canFinishGame || isActionPending}
+              >
+                {isActionPending && canFinishGame ? 'Завершение...' : 'Остановить игру'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function FacilitatorSessionPage({
@@ -236,22 +476,13 @@ function FacilitatorSessionPage({
                     <span>Этапов: {sessionItem.stageCount}</span>
                   </div>
 
-                  <div className="session-card-actions session-card-actions--three" onClick={(event) => event.stopPropagation()}>
+                  <div className="session-card-actions session-card-actions--two" onClick={(event) => event.stopPropagation()}>
                     <button
                       type="button"
                       className="primary-button compact-button"
-                      onClick={() => onStartSession(sessionItem.sessionCode)}
-                      disabled={sessionItem.sessionStatus !== 'LOBBY' || isActionPending}
+                      onClick={() => onOpenSession(sessionItem.sessionCode)}
                     >
-                      {isActionPending && sessionItem.sessionStatus === 'LOBBY' ? 'Запуск...' : 'Запустить'}
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary-button compact-button finish-button"
-                      onClick={() => onFinishSession(sessionItem.sessionCode)}
-                      disabled={sessionItem.sessionStatus === 'FINISHED' || isActionPending}
-                    >
-                      {isActionPending && sessionItem.sessionStatus !== 'LOBBY' ? 'Завершение...' : 'Завершить'}
+                      {isSelected ? 'Открыта' : 'Перейти'}
                     </button>
                     <button
                       type="button"
@@ -333,6 +564,15 @@ function FacilitatorSessionPage({
             </button>
           </div>
         </div>
+      ) : null}
+
+      {session ? (
+        <SessionControlPanel
+          session={session}
+          actionSessionCode={actionSessionCode}
+          onStartSession={onStartSession}
+          onFinishSession={onFinishSession}
+        />
       ) : null}
 
       {error ? <p className="form-error">{error}</p> : null}
