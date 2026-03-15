@@ -2,15 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import type { GameSessionParticipantsResponse, SessionParticipantSummary } from '../types/app';
 import { getSessionStatusLabel } from '../constants/sessionStatuses';
 import CollapsibleSection from './CollapsibleSection';
+import TeamChatFeed from './TeamChatFeed';
+import { useFacilitatorTeamChats } from '../hooks/useFacilitatorTeamChats';
 
 interface FacilitatorLiveDashboardProps {
   session: GameSessionParticipantsResponse;
   loading: boolean;
+  authHeader: string;
 }
 
 const leadershipRoles = new Set(['Главный врач', 'Главная медсестра', 'Главный инженер']);
 
-function FacilitatorLiveDashboard({ session, loading }: FacilitatorLiveDashboardProps) {
+function FacilitatorLiveDashboard({ session, loading, authHeader }: FacilitatorLiveDashboardProps) {
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(session.teams[0]?.teamId ?? null);
 
   useEffect(() => {
@@ -32,6 +35,12 @@ function FacilitatorLiveDashboard({ session, loading }: FacilitatorLiveDashboard
       return accumulator;
     }, {});
   }, [session.participants, session.teams]);
+
+  const { chatState } = useFacilitatorTeamChats({
+    sessionCode: session.sessionCode,
+    authHeader,
+    enabled: true,
+  });
 
   const selectedTeam = session.teams.find((team) => team.teamId === selectedTeamId) ?? session.teams[0] ?? null;
   const selectedTeamParticipants = selectedTeam ? (teamParticipantsMap[selectedTeam.teamId] ?? []) : [];
@@ -85,6 +94,40 @@ function FacilitatorLiveDashboard({ session, loading }: FacilitatorLiveDashboard
             );
           })}
         </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        kicker="Чаты команд"
+        title="Переписка обеих команд"
+        className="facilitator-live-panel"
+        defaultExpanded={false}
+        badge={(
+          <span className="status-pill subtle-status-pill">
+            {chatState.loading ? 'Загрузка чатов...' : `Чатов команд: ${chatState.teamChats.length}`}
+          </span>
+        )}
+      >
+        <div className="waiting-note">
+          <p>
+            Здесь отображаются сообщения обеих команд в реальном времени. Игроки видят только свой чат, а обзор всех переписок доступен только ведущему.
+          </p>
+        </div>
+
+        <div className="facilitator-team-chat-grid">
+          {chatState.teamChats.map((teamChat) => (
+            <TeamChatFeed
+              key={teamChat.teamId}
+              title={teamChat.teamName}
+              subtitle={`Команда ${teamChat.sortOrder}`}
+              messages={teamChat.messages}
+              loading={chatState.loading}
+              connectionStatus={chatState.connectionStatus}
+              emptyText="В этой команде пока нет сообщений."
+            />
+          ))}
+        </div>
+
+        {chatState.error ? <p className="form-error">{chatState.error}</p> : null}
       </CollapsibleSection>
 
       {selectedTeam ? (

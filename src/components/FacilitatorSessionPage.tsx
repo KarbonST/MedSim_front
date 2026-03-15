@@ -15,6 +15,7 @@ import CollapsibleSection from './CollapsibleSection';
 
 interface FacilitatorSessionPageProps {
   login: string;
+  authHeader: string;
   loading: boolean;
   sessionsLoading: boolean;
   creatingSession: boolean;
@@ -286,6 +287,7 @@ function SessionControlPanel({
 
 function FacilitatorSessionPage({
   login,
+  authHeader,
   loading,
   sessionsLoading,
   creatingSession,
@@ -588,7 +590,7 @@ function FacilitatorSessionPage({
           </>
         ) : (
           <>
-            <FacilitatorLiveDashboard session={session} loading={loading} />
+            <FacilitatorLiveDashboard session={session} loading={loading} authHeader={authHeader} />
             <SessionControlPanel
               session={session}
               actionSessionCode={actionSessionCode}

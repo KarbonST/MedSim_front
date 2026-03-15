@@ -162,6 +162,37 @@ export interface GameSessionParticipantsResponse {
   sessionRuntime: SessionRuntime;
 }
 
+export interface FacilitatorTeamChatsResponse {
+  sessionCode: string;
+  sessionName: string;
+  teamChats: FacilitatorTeamChatThread[];
+}
+
+export interface TeamChatMessage {
+  id: number;
+  teamId: number;
+  teamName: string;
+  participantId: number;
+  authorName: string;
+  messageText: string;
+  createdAt: string;
+}
+
+export interface PlayerTeamChatResponse {
+  teamId: number;
+  teamName: string;
+  messages: TeamChatMessage[];
+}
+
+export interface FacilitatorTeamChatThread {
+  teamId: number;
+  teamName: string;
+  sortOrder: number;
+  messages: TeamChatMessage[];
+}
+
+export type ChatConnectionStatus = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed';
+
 export interface JoinState {
   loading: boolean;
   error: string;

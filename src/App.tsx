@@ -850,6 +850,7 @@ function App() {
         ) : isFacilitatorWorkspaceOpen ? (
           <FacilitatorSessionPage
             login={staffForm.login.trim()}
+            authHeader={staffAuthHeader}
             loading={overviewState.loading}
             sessionsLoading={sessionsState.loading}
             creatingSession={creatingSession}

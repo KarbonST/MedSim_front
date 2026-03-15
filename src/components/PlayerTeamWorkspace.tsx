@@ -4,6 +4,8 @@ import BrandHeader from './BrandHeader';
 import { getSessionStatusLabel } from '../constants/sessionStatuses';
 import { formatRuntimeDuration, getInteractionModeLabel, getRuntimeRemainingSeconds, getTimerStatusLabel } from '../lib/sessionRuntime';
 import CollapsibleSection from './CollapsibleSection';
+import TeamChatFeed from './TeamChatFeed';
+import { usePlayerTeamChat } from '../hooks/usePlayerTeamChat';
 
 interface PlayerTeamWorkspaceProps {
   workspace: PlayerTeamWorkspace;
@@ -38,6 +40,12 @@ function PlayerTeamWorkspaceScreen({
   }, [workspace.sessionRuntime.timerStatus, workspace.sessionRuntime.timerEndsAt]);
 
   const remainingSeconds = getRuntimeRemainingSeconds(workspace.sessionRuntime, nowMs);
+  const [chatDraft, setChatDraft] = useState('');
+  const { chatState, sendMessage } = usePlayerTeamChat({
+    sessionCode: workspace.sessionCode,
+    participantId: workspace.participantId,
+    enabled: hasTeam,
+  });
   const currentStageLabel = workspace.sessionRuntime.activeStageNumber == null
     ? 'Пока не выбран'
     : `Этап ${workspace.sessionRuntime.activeStageNumber}`;
@@ -121,6 +129,58 @@ function PlayerTeamWorkspaceScreen({
         </div>
       ) : (
         <>
+          <CollapsibleSection
+            kicker="Чат команды"
+            title="Общение команды"
+            defaultExpanded
+            badge={<span className="status-pill subtle-status-pill">Чат команды</span>}
+          >
+            <TeamChatFeed
+              title={workspace.teamName ?? 'Командный чат'}
+              subtitle={workspace.sessionStatus === 'FINISHED'
+                ? 'Игра завершена. История переписки доступна для просмотра.'
+                : 'Сообщения видны только вашей команде и ведущему.'}
+              messages={chatState.messages}
+              loading={chatState.loading}
+              connectionStatus={chatState.connectionStatus}
+              emptyText="Сообщения вашей команды появятся здесь."
+              currentParticipantId={workspace.participantId}
+              footer={(
+                workspace.sessionStatus === 'FINISHED' ? (
+                  <p className="participant-role-subtitle team-chat-footer-note">
+                    После завершения игры чат остаётся доступным только для просмотра.
+                  </p>
+                ) : (
+                  <form
+                    className="team-chat-composer"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const sent = sendMessage(chatDraft);
+                      if (sent) {
+                        setChatDraft('');
+                      }
+                    }}
+                  >
+                    <textarea
+                      value={chatDraft}
+                      onChange={(event) => setChatDraft(event.target.value)}
+                      placeholder="Введите сообщение для команды"
+                      rows={3}
+                    />
+                    <button
+                      type="submit"
+                      className="primary-button compact-button"
+                      disabled={!chatDraft.trim()}
+                    >
+                      Отправить
+                    </button>
+                  </form>
+                )
+              )}
+            />
+            {chatState.error ? <p className="form-error">{chatState.error}</p> : null}
+          </CollapsibleSection>
+
           <CollapsibleSection
             kicker="Состав команды"
             title="Только ваша команда"
