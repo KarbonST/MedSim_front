@@ -164,7 +164,7 @@ function PlayerTeamWorkspaceScreen({
                     <textarea
                       value={chatDraft}
                       onChange={(event) => setChatDraft(event.target.value)}
-                      placeholder="Введите сообщение для команды"
+                      placeholder="Напишите сообщение для своей команды"
                       rows={3}
                     />
                     <button

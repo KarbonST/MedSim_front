@@ -1252,12 +1252,42 @@ button {
 .team-chat-composer {
   display: grid;
   gap: 0.8rem;
+  padding: 0.85rem;
+  border-radius: 20px;
+  border: 1px solid rgba(68, 132, 99, 0.14);
+  background: linear-gradient(180deg, rgba(246, 252, 248, 0.98), rgba(236, 248, 240, 0.9));
 }
 
 .team-chat-composer textarea {
   width: 100%;
   min-height: 6.5rem;
-  resize: vertical;
+  border: 1px solid rgba(108, 153, 126, 0.22);
+  border-radius: 18px;
+  padding: 0.95rem 1rem;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--primary-text);
+  font: inherit;
+  line-height: 1.45;
+  resize: none;
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.team-chat-composer textarea::placeholder {
+  color: #7a9487;
+}
+
+.team-chat-composer textarea:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+  background: #ffffff;
+}
+
+.team-chat-composer .primary-button {
+  justify-self: end;
+  min-width: 11rem;
+  box-shadow: 0 10px 22px rgba(21, 128, 61, 0.18);
 }
 
 .team-chat-footer-note {
@@ -1307,5 +1337,15 @@ button {
 
   .team-chat-composer textarea {
     min-height: 5.5rem;
+  }
+
+  .team-chat-composer {
+    padding: 0.75rem;
+    border-radius: 18px;
+  }
+
+  .team-chat-composer .primary-button {
+    justify-self: stretch;
+    width: 100%;
   }
 }
