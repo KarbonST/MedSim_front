@@ -342,6 +342,32 @@ export async function startGameSession(
   return response.json() as Promise<GameSessionSummary>;
 }
 
+export async function pauseGameSession(
+  sessionCode: string,
+  authHeader: string,
+): Promise<GameSessionSummary> {
+  const response = await fetch(
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/pause`,
+    {
+      method: 'PATCH',
+      headers: createAuthorizedHeaders(authHeader),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось поставить сессию на паузу. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionSummary>;
+}
+
 export async function finishGameSession(
   sessionCode: string,
   authHeader: string,

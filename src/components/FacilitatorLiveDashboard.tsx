@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { GameSessionParticipantsResponse, SessionParticipantSummary } from '../types/app';
+import { getSessionStatusLabel } from '../constants/sessionStatuses';
 
 interface FacilitatorLiveDashboardProps {
   session: GameSessionParticipantsResponse;
@@ -103,7 +104,7 @@ function FacilitatorLiveDashboard({ session, loading }: FacilitatorLiveDashboard
             </article>
             <article className="info-card">
               <span>Статус сессии</span>
-              <strong>{session.sessionStatus}</strong>
+              <strong>{getSessionStatusLabel(session.sessionStatus)}</strong>
             </article>
             <article className="info-card">
               <span>Этапов настроено</span>

@@ -7,6 +7,7 @@ import type {
   SessionStageSetting,
 } from '../types/app';
 import BrandHeader from './BrandHeader';
+import { getSessionStatusLabel } from '../constants/sessionStatuses';
 import FacilitatorLiveDashboard from './FacilitatorLiveDashboard';
 import SessionSetupPanel from './SessionSetupPanel';
 
@@ -52,6 +53,7 @@ interface FacilitatorSessionPageProps {
     gameRole: string,
   ) => void | Promise<void>;
   onStartSession: (sessionCode: string) => void | Promise<void>;
+  onPauseSession: (sessionCode: string) => void | Promise<void>;
   onFinishSession: (sessionCode: string) => void | Promise<void>;
   onDeleteSession: (sessionCode: string) => void | Promise<void>;
   onBack: () => void;
@@ -61,6 +63,7 @@ interface SessionControlPanelProps {
   session: GameSessionParticipantsResponse;
   actionSessionCode: string;
   onStartSession: (sessionCode: string) => void | Promise<void>;
+  onPauseSession: (sessionCode: string) => void | Promise<void>;
   onFinishSession: (sessionCode: string) => void | Promise<void>;
 }
 
@@ -79,6 +82,7 @@ function SessionControlPanel({
   session,
   actionSessionCode,
   onStartSession,
+  onPauseSession,
   onFinishSession,
 }: SessionControlPanelProps) {
   const stages = useMemo(() => sortStages(session.stages), [session.stages]);
@@ -122,6 +126,12 @@ function SessionControlPanel({
       window.clearInterval(timerId);
     };
   }, [isTimerRunning]);
+
+  useEffect(() => {
+    if (session.sessionStatus !== 'IN_PROGRESS') {
+      setIsTimerRunning(false);
+    }
+  }, [session.sessionStatus]);
 
   const currentStage = stages.find((stage) => stage.stageNumber === selectedStageNumber) ?? stages[0] ?? null;
   const isActionPending = actionSessionCode === session.sessionCode;
@@ -174,7 +184,7 @@ function SessionControlPanel({
           <p className="section-kicker">Управление сессией</p>
           <h3>Таймер, этапы и запуск игры</h3>
         </div>
-        <span className="status-pill subtle-status-pill">Статус: {session.sessionStatus}</span>
+        <span className="status-pill subtle-status-pill">Статус: {getSessionStatusLabel(session.sessionStatus)}</span>
       </div>
 
       <div className="waiting-note">
@@ -229,7 +239,7 @@ function SessionControlPanel({
                   type="button"
                   className="primary-button compact-button"
                   onClick={() => setIsTimerRunning(true)}
-                  disabled={!currentStage || isTimerRunning || remainingSeconds === 0}
+                  disabled={!currentStage || isTimerRunning || remainingSeconds === 0 || !isRunning}
                 >
                   Пуск таймера
                 </button>
@@ -239,7 +249,7 @@ function SessionControlPanel({
                   onClick={() => setIsTimerRunning(false)}
                   disabled={!isTimerRunning}
                 >
-                  Пауза
+                  Пауза таймера
                 </button>
                 <button
                   type="button"
@@ -323,6 +333,7 @@ function FacilitatorSessionPage({
   onAssignRandomRoles,
   onAssignManualRole,
   onStartSession,
+  onPauseSession,
   onFinishSession,
   onDeleteSession,
   onBack,
@@ -463,11 +474,11 @@ function FacilitatorSessionPage({
                   }}
                 >
                   <div className="session-card-header">
-                    <div>
+                    <div className="session-card-title">
                       <strong>{sessionItem.sessionName}</strong>
                       <span>{sessionItem.sessionCode}</span>
                     </div>
-                    <span className="status-pill session-status-pill">{sessionItem.sessionStatus}</span>
+                    <span className="status-pill session-status-pill">{getSessionStatusLabel(sessionItem.sessionStatus)}</span>
                   </div>
 
                   <div className="session-card-metrics">
@@ -524,7 +535,7 @@ function FacilitatorSessionPage({
             </article>
             <article className="info-card">
               <span>Статус</span>
-              <strong>{session.sessionStatus}</strong>
+              <strong>{getSessionStatusLabel(session.sessionStatus)}</strong>
             </article>
             <article className="info-card">
               <span>Участники</span>

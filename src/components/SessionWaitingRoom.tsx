@@ -1,5 +1,6 @@
 import type { PlayerSession, PlayerTeamWorkspace } from '../types/app';
 import BrandHeader from './BrandHeader';
+import { getSessionStatusLabel } from '../constants/sessionStatuses';
 
 interface SessionWaitingRoomProps {
   session: PlayerSession;
@@ -32,7 +33,7 @@ function SessionWaitingRoom({
           <p className="section-kicker">Сессия</p>
           <h2>{session.sessionName}</h2>
         </div>
-        <span className="status-pill">{workspace?.sessionStatus ?? session.sessionStatus}</span>
+        <span className="status-pill">{getSessionStatusLabel(workspace?.sessionStatus ?? session.sessionStatus)}</span>
       </div>
 
       <div className="room-grid">

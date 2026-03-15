@@ -25,6 +25,7 @@ import {
   createGameSession,
   deleteGameSession,
   finishGameSession,
+  pauseGameSession,
   renameGameSession,
   renameGameSessionTeam,
   saveGameSessionStages,
@@ -228,7 +229,7 @@ function App() {
       || !staffAuthHeader
       || !facilitatorSessionCode.trim()
       || !overviewState.session
-      || (overviewState.session.sessionStatus !== 'IN_PROGRESS' && overviewState.session.sessionStatus !== 'FINISHED')
+      || !['IN_PROGRESS', 'PAUSED', 'FINISHED'].includes(overviewState.session.sessionStatus)
     ) {
       return;
     }
@@ -616,6 +617,12 @@ function App() {
       return;
     }
 
+    const shouldFinish = window.confirm('Вы действительно хотите завершить игру?');
+
+    if (!shouldFinish) {
+      return;
+    }
+
     setFacilitatorActionCode(sessionCode);
     setFacilitatorActionError('');
 
@@ -625,6 +632,27 @@ function App() {
     } catch (error) {
       setFacilitatorActionError(
         error instanceof Error ? error.message : 'Не удалось завершить сессию.',
+      );
+    } finally {
+      setFacilitatorActionCode('');
+    }
+  };
+
+  const handlePauseSession = async (sessionCode: string): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    setFacilitatorActionCode(sessionCode);
+    setFacilitatorActionError('');
+
+    try {
+      await pauseGameSession(sessionCode, staffAuthHeader);
+      await syncAfterSessionMutation(sessionCode);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось поставить сессию на паузу.',
       );
     } finally {
       setFacilitatorActionCode('');
@@ -756,6 +784,7 @@ function App() {
             onAssignRandomRoles={handleAssignRandomRoles}
             onAssignManualRole={handleAssignManualRole}
             onStartSession={handleStartSession}
+            onPauseSession={handlePauseSession}
             onFinishSession={handleFinishSession}
             onDeleteSession={handleDeleteSession}
             onBack={handleCloseFacilitatorWorkspace}

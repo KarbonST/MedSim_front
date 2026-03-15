@@ -270,6 +270,14 @@ button {
 
 .session-status-pill {
   align-self: flex-start;
+  padding: 10px 14px;
+  min-height: 0;
+  border: 1px solid #cce8d4;
+  background: #e8f8ed;
+  color: #2e5b47;
+  font-size: 0.95rem;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .waiting-note {
@@ -334,6 +342,15 @@ button {
 .session-card-header > div {
   display: grid;
   gap: 4px;
+}
+
+.session-card-title {
+  min-width: 0;
+}
+
+.session-card-title strong {
+  display: block;
+  line-height: 1.2;
 }
 
 .session-card-metrics {
