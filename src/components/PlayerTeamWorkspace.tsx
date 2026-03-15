@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import type { PlayerTeamWorkspace } from '../types/app';
 import BrandHeader from './BrandHeader';
 import { getSessionStatusLabel } from '../constants/sessionStatuses';
+import { formatRuntimeDuration, getInteractionModeLabel, getRuntimeRemainingSeconds, getTimerStatusLabel } from '../lib/sessionRuntime';
 
 interface PlayerTeamWorkspaceProps {
   workspace: PlayerTeamWorkspace;
@@ -17,6 +19,27 @@ function PlayerTeamWorkspaceScreen({
 }: PlayerTeamWorkspaceProps) {
   const isFinished = workspace.sessionStatus === 'FINISHED';
   const hasTeam = workspace.teamId !== null;
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (workspace.sessionRuntime.timerStatus !== 'RUNNING') {
+      return;
+    }
+
+    setNowMs(Date.now());
+    const timerId = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [workspace.sessionRuntime.timerStatus, workspace.sessionRuntime.timerEndsAt]);
+
+  const remainingSeconds = getRuntimeRemainingSeconds(workspace.sessionRuntime, nowMs);
+  const currentStageLabel = workspace.sessionRuntime.activeStageNumber == null
+    ? 'Пока не выбран'
+    : `Этап ${workspace.sessionRuntime.activeStageNumber}`;
 
   return (
     <section className="session-room">
@@ -32,6 +55,33 @@ function PlayerTeamWorkspaceScreen({
           <h2>{workspace.sessionName}</h2>
         </div>
         <span className="status-pill">{getSessionStatusLabel(workspace.sessionStatus)}</span>
+      </div>
+
+      <div className="participants-panel player-runtime-panel">
+        <div className="participants-panel-header">
+          <div>
+            <p className="section-kicker">Ход игры</p>
+            <h3>Текущий этап и время</h3>
+          </div>
+          <span className="status-pill subtle-status-pill runtime-status-pill">
+            {getTimerStatusLabel(workspace.sessionRuntime.timerStatus)}
+          </span>
+        </div>
+
+        <div className="player-runtime-grid">
+          <article className="info-card player-runtime-card">
+            <span>Текущий этап</span>
+            <strong>{currentStageLabel}</strong>
+          </article>
+          <article className="info-card player-runtime-card player-runtime-card--timer">
+            <span>До конца этапа</span>
+            <strong className="player-runtime-timer">{formatRuntimeDuration(remainingSeconds)}</strong>
+          </article>
+          <article className="info-card player-runtime-card">
+            <span>Доступно на этапе</span>
+            <strong>{getInteractionModeLabel(workspace.sessionRuntime.activeStageInteractionMode)}</strong>
+          </article>
+        </div>
       </div>
 
       <div className="room-grid">
@@ -133,7 +183,7 @@ function PlayerTeamWorkspaceScreen({
             <p>
               {isFinished
                 ? 'Сессия завершена. Командный экран оставлен доступным для просмотра итогового состава команды.'
-                : 'Вы видите только состояние своей команды. Данные других команд скрыты от участников.'}
+                : 'На экране отображаются только данные вашей команды, текущий этап и общий таймер игры. Информация по другим командам скрыта.'}
             </p>
             {loading ? <p className="waiting-note-inline">Обновляем состояние команды...</p> : null}
             {refreshError ? <p className="form-error waiting-note-inline">{refreshError}</p> : null}

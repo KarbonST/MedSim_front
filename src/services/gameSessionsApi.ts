@@ -3,6 +3,7 @@ import type {
   GameSessionParticipantsResponse,
   GameSessionRenameRequest,
   GameSessionRoleAssignmentRequest,
+  GameSessionRuntimeStageRequest,
   GameSessionStageSettingsRequest,
   GameSessionSummary,
   GameSessionTeamAssignmentRequest,
@@ -61,7 +62,7 @@ export async function fetchGameSessions(authHeader: string): Promise<GameSession
 export async function createGameSession(
   request: GameSessionCreateRequest,
   authHeader: string,
-): Promise<GameSessionSummary> {
+): Promise<GameSessionParticipantsResponse> {
   const response = await fetch(`${API_PREFIX}/game-sessions`, {
     method: 'POST',
     headers: createAuthorizedHeaders(authHeader, {
@@ -81,14 +82,14 @@ export async function createGameSession(
     );
   }
 
-  return response.json() as Promise<GameSessionSummary>;
+  return response.json() as Promise<GameSessionParticipantsResponse>;
 }
 
 export async function renameGameSession(
   sessionCode: string,
   request: GameSessionRenameRequest,
   authHeader: string,
-): Promise<GameSessionSummary> {
+): Promise<GameSessionParticipantsResponse> {
   const response = await fetch(
     `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/name`,
     {
@@ -111,7 +112,7 @@ export async function renameGameSession(
     );
   }
 
-  return response.json() as Promise<GameSessionSummary>;
+  return response.json() as Promise<GameSessionParticipantsResponse>;
 }
 
 export async function renameGameSessionTeam(
@@ -319,7 +320,7 @@ export async function assignManualGameRole(
 export async function startGameSession(
   sessionCode: string,
   authHeader: string,
-): Promise<GameSessionSummary> {
+): Promise<GameSessionParticipantsResponse> {
   const response = await fetch(
     `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/start`,
     {
@@ -339,7 +340,7 @@ export async function startGameSession(
     );
   }
 
-  return response.json() as Promise<GameSessionSummary>;
+  return response.json() as Promise<GameSessionParticipantsResponse>;
 }
 
 export async function pauseGameSession(
@@ -416,4 +417,113 @@ export async function deleteGameSession(
       ),
     );
   }
+}
+
+
+export async function selectGameSessionRuntimeStage(
+  sessionCode: string,
+  request: GameSessionRuntimeStageRequest,
+  authHeader: string,
+): Promise<GameSessionParticipantsResponse> {
+  const response = await fetch(
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/runtime/stage`,
+    {
+      method: 'PATCH',
+      headers: createAuthorizedHeaders(authHeader, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось переключить этап. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionParticipantsResponse>;
+}
+
+export async function startGameSessionTimer(
+  sessionCode: string,
+  authHeader: string,
+): Promise<GameSessionParticipantsResponse> {
+  const response = await fetch(
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/runtime/timer/start`,
+    {
+      method: 'PATCH',
+      headers: createAuthorizedHeaders(authHeader),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось запустить таймер этапа. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionParticipantsResponse>;
+}
+
+export async function pauseGameSessionTimer(
+  sessionCode: string,
+  authHeader: string,
+): Promise<GameSessionParticipantsResponse> {
+  const response = await fetch(
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/runtime/timer/pause`,
+    {
+      method: 'PATCH',
+      headers: createAuthorizedHeaders(authHeader),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось поставить таймер на паузу. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionParticipantsResponse>;
+}
+
+export async function resetGameSessionTimer(
+  sessionCode: string,
+  authHeader: string,
+): Promise<GameSessionParticipantsResponse> {
+  const response = await fetch(
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/runtime/timer/reset`,
+    {
+      method: 'PATCH',
+      headers: createAuthorizedHeaders(authHeader),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось сбросить таймер этапа. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionParticipantsResponse>;
 }

@@ -26,10 +26,14 @@ import {
   deleteGameSession,
   finishGameSession,
   pauseGameSession,
+  pauseGameSessionTimer,
   renameGameSession,
   renameGameSessionTeam,
+  resetGameSessionTimer,
   saveGameSessionStages,
+  selectGameSessionRuntimeStage,
   startGameSession,
+  startGameSessionTimer,
 } from './services/gameSessionsApi';
 import { fetchPlayerTeamWorkspace } from './services/playerSessionsApi';
 import { createBasicAuthHeader, fetchStaffProfile } from './services/staffAuthApi';
@@ -590,6 +594,93 @@ function App() {
     }
   };
 
+  const handleSelectRuntimeStage = async (
+    sessionCode: string,
+    stageNumber: number,
+  ): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    setFacilitatorActionCode(sessionCode);
+    setFacilitatorActionError('');
+
+    try {
+      await selectGameSessionRuntimeStage(sessionCode, { stageNumber }, staffAuthHeader);
+      await syncAfterSessionMutation(sessionCode);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось переключить этап.',
+      );
+    } finally {
+      setFacilitatorActionCode('');
+    }
+  };
+
+  const handleStartRuntimeTimer = async (sessionCode: string): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    setFacilitatorActionCode(sessionCode);
+    setFacilitatorActionError('');
+
+    try {
+      await startGameSessionTimer(sessionCode, staffAuthHeader);
+      await syncAfterSessionMutation(sessionCode);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось запустить таймер этапа.',
+      );
+    } finally {
+      setFacilitatorActionCode('');
+    }
+  };
+
+  const handlePauseRuntimeTimer = async (sessionCode: string): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    setFacilitatorActionCode(sessionCode);
+    setFacilitatorActionError('');
+
+    try {
+      await pauseGameSessionTimer(sessionCode, staffAuthHeader);
+      await syncAfterSessionMutation(sessionCode);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось поставить таймер этапа на паузу.',
+      );
+    } finally {
+      setFacilitatorActionCode('');
+    }
+  };
+
+  const handleResetRuntimeTimer = async (sessionCode: string): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    setFacilitatorActionCode(sessionCode);
+    setFacilitatorActionError('');
+
+    try {
+      await resetGameSessionTimer(sessionCode, staffAuthHeader);
+      await syncAfterSessionMutation(sessionCode);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось сбросить таймер этапа.',
+      );
+    } finally {
+      setFacilitatorActionCode('');
+    }
+  };
+
   const handleStartSession = async (sessionCode: string): Promise<void> => {
     if (!staffAuthHeader) {
       setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
@@ -783,6 +874,10 @@ function App() {
             onSaveStages={handleSaveStages}
             onAssignRandomRoles={handleAssignRandomRoles}
             onAssignManualRole={handleAssignManualRole}
+            onSelectRuntimeStage={handleSelectRuntimeStage}
+            onStartRuntimeTimer={handleStartRuntimeTimer}
+            onPauseRuntimeTimer={handlePauseRuntimeTimer}
+            onResetRuntimeTimer={handleResetRuntimeTimer}
             onStartSession={handleStartSession}
             onPauseSession={handlePauseSession}
             onFinishSession={handleFinishSession}

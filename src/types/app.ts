@@ -60,11 +60,21 @@ export interface PlayerTeamWorkspaceMember {
 }
 
 export type StageInteractionMode = 'CHAT_ONLY' | 'CHAT_AND_KANBAN';
+export type SessionTimerStatus = 'STOPPED' | 'RUNNING' | 'PAUSED';
 
 export interface SessionStageSetting {
   stageNumber: number;
   durationMinutes: number;
   interactionMode: StageInteractionMode;
+}
+
+export interface SessionRuntime {
+  activeStageNumber: number | null;
+  activeStageDurationMinutes: number | null;
+  activeStageInteractionMode: StageInteractionMode | null;
+  timerStatus: SessionTimerStatus;
+  remainingSeconds: number | null;
+  timerEndsAt: string | null;
 }
 
 export interface PlayerTeamWorkspace {
@@ -81,6 +91,7 @@ export interface PlayerTeamWorkspace {
   teamName: string | null;
   teammates: PlayerTeamWorkspaceMember[];
   stages: SessionStageSetting[];
+  sessionRuntime: SessionRuntime;
 }
 
 export interface SessionParticipantSummary {
@@ -126,6 +137,10 @@ export interface GameSessionRoleAssignmentRequest {
   gameRole: string;
 }
 
+export interface GameSessionRuntimeStageRequest {
+  stageNumber: number;
+}
+
 export interface GameSessionSummary {
   sessionId: number;
   sessionCode: string;
@@ -144,6 +159,7 @@ export interface GameSessionParticipantsResponse {
   teams: SessionTeamSummary[];
   participants: SessionParticipantSummary[];
   stages: SessionStageSetting[];
+  sessionRuntime: SessionRuntime;
 }
 
 export interface JoinState {

@@ -1073,3 +1073,51 @@ button {
 .session-control-grid--compact {
   grid-template-columns: 1fr;
 }
+
+.player-runtime-panel {
+  gap: 14px;
+}
+
+.player-runtime-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.player-runtime-card {
+  min-height: 0;
+}
+
+.player-runtime-card--timer {
+  background: linear-gradient(135deg, #eefcf1 0%, #fbfffc 100%);
+  border-color: #bfe4ca;
+}
+
+.player-runtime-timer {
+  font-size: clamp(1.9rem, 8vw, 2.8rem);
+  line-height: 0.95;
+}
+
+.runtime-status-pill {
+  width: fit-content;
+}
+
+@media (max-width: 900px) {
+  .player-runtime-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .player-runtime-panel {
+    padding: 14px;
+  }
+
+  .player-runtime-grid {
+    gap: 10px;
+  }
+
+  .player-runtime-timer {
+    font-size: 2rem;
+  }
+}

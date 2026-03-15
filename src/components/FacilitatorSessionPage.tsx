@@ -8,6 +8,7 @@ import type {
 } from '../types/app';
 import BrandHeader from './BrandHeader';
 import { getSessionStatusLabel } from '../constants/sessionStatuses';
+import { formatRuntimeDuration, getInteractionModeLabel, getRuntimeRemainingSeconds, getTimerStatusLabel } from '../lib/sessionRuntime';
 import FacilitatorLiveDashboard from './FacilitatorLiveDashboard';
 import SessionSetupPanel from './SessionSetupPanel';
 
@@ -52,6 +53,14 @@ interface FacilitatorSessionPageProps {
     participantId: number,
     gameRole: string,
   ) => void | Promise<void>;
+  onSelectRuntimeStage: (sessionCode: string, stageNumber: number) => void | Promise<void>;
+  onStartRuntimeTimer: (sessionCode: string) => void | Promise<void>;
+  onPauseRuntimeTimer: (sessionCode: string) => void | Promise<void>;
+  onResetRuntimeTimer: (sessionCode: string) => void | Promise<void>;
+  onSelectRuntimeStage: (sessionCode: string, stageNumber: number) => void | Promise<void>;
+  onStartRuntimeTimer: (sessionCode: string) => void | Promise<void>;
+  onPauseRuntimeTimer: (sessionCode: string) => void | Promise<void>;
+  onResetRuntimeTimer: (sessionCode: string) => void | Promise<void>;
   onStartSession: (sessionCode: string) => void | Promise<void>;
   onPauseSession: (sessionCode: string) => void | Promise<void>;
   onFinishSession: (sessionCode: string) => void | Promise<void>;
@@ -62,6 +71,10 @@ interface FacilitatorSessionPageProps {
 interface SessionControlPanelProps {
   session: GameSessionParticipantsResponse;
   actionSessionCode: string;
+  onSelectRuntimeStage: (sessionCode: string, stageNumber: number) => void | Promise<void>;
+  onStartRuntimeTimer: (sessionCode: string) => void | Promise<void>;
+  onPauseRuntimeTimer: (sessionCode: string) => void | Promise<void>;
+  onResetRuntimeTimer: (sessionCode: string) => void | Promise<void>;
   onStartSession: (sessionCode: string) => void | Promise<void>;
   onPauseSession: (sessionCode: string) => void | Promise<void>;
   onFinishSession: (sessionCode: string) => void | Promise<void>;
@@ -81,59 +94,35 @@ function formatDuration(totalSeconds: number): string {
 function SessionControlPanel({
   session,
   actionSessionCode,
+  onSelectRuntimeStage,
+  onStartRuntimeTimer,
+  onPauseRuntimeTimer,
+  onResetRuntimeTimer,
   onStartSession,
   onPauseSession,
   onFinishSession,
 }: SessionControlPanelProps) {
   const stages = useMemo(() => sortStages(session.stages), [session.stages]);
-  const stageSignature = stages.map((stage) => `${stage.stageNumber}:${stage.durationMinutes}:${stage.interactionMode}`).join('|');
-  const [selectedStageNumber, setSelectedStageNumber] = useState<number | null>(stages[0]?.stageNumber ?? null);
-  const [remainingSeconds, setRemainingSeconds] = useState(stages[0] ? stages[0].durationMinutes * 60 : 0);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
-    if (!stages.length) {
-      setSelectedStageNumber(null);
-      setRemainingSeconds(0);
-      setIsTimerRunning(false);
+    if (session.sessionRuntime.timerStatus !== 'RUNNING') {
       return;
     }
 
-    const firstStage = stages[0];
-    setSelectedStageNumber(firstStage.stageNumber);
-    setRemainingSeconds(firstStage.durationMinutes * 60);
-    setIsTimerRunning(false);
-  }, [session.sessionCode, stageSignature]);
-
-  useEffect(() => {
-    if (!isTimerRunning) {
-      return;
-    }
-
+    setNowMs(Date.now());
     const timerId = window.setInterval(() => {
-      setRemainingSeconds((current) => {
-        if (current <= 1) {
-          window.clearInterval(timerId);
-          setIsTimerRunning(false);
-          return 0;
-        }
-
-        return current - 1;
-      });
+      setNowMs(Date.now());
     }, 1000);
 
     return () => {
       window.clearInterval(timerId);
     };
-  }, [isTimerRunning]);
+  }, [session.sessionRuntime.timerStatus, session.sessionRuntime.timerEndsAt]);
 
-  useEffect(() => {
-    if (session.sessionStatus !== 'IN_PROGRESS') {
-      setIsTimerRunning(false);
-    }
-  }, [session.sessionStatus]);
-
-  const currentStage = stages.find((stage) => stage.stageNumber === selectedStageNumber) ?? stages[0] ?? null;
+  const currentStageNumber = session.sessionRuntime.activeStageNumber ?? stages[0]?.stageNumber ?? null;
+  const currentStage = stages.find((stage) => stage.stageNumber === currentStageNumber) ?? stages[0] ?? null;
+  const remainingSeconds = getRuntimeRemainingSeconds(session.sessionRuntime, nowMs);
   const isActionPending = actionSessionCode === session.sessionCode;
   const hasSavedStages = stages.length > 0;
   const leadershipRoles = ['Главный врач', 'Главная медсестра', 'Главный инженер'];
@@ -155,10 +144,10 @@ function SessionControlPanel({
     })
     .filter((team) => team.missingLeadershipRoles.length > 0);
   const canStartGame =
-    (session.sessionStatus === 'LOBBY' &&
-      hasSavedStages &&
-      unassignedParticipantsCount === 0 &&
-      teamsMissingLeadership.length === 0)
+    (session.sessionStatus === 'LOBBY'
+      && hasSavedStages
+      && unassignedParticipantsCount === 0
+      && teamsMissingLeadership.length === 0)
     || session.sessionStatus === 'PAUSED';
   const canPauseGame = session.sessionStatus === 'IN_PROGRESS';
   const canFinishGame = session.sessionStatus === 'IN_PROGRESS' || session.sessionStatus === 'PAUSED';
@@ -166,21 +155,6 @@ function SessionControlPanel({
   const isRunning = session.sessionStatus === 'IN_PROGRESS';
   const startButtonLabel = session.sessionStatus === 'PAUSED' ? 'Продолжить игру' : 'Начать игру';
   const startPendingLabel = session.sessionStatus === 'PAUSED' ? 'Возобновление...' : 'Запуск...';
-
-  const selectStage = (stage: SessionStageSetting): void => {
-    setSelectedStageNumber(stage.stageNumber);
-    setRemainingSeconds(stage.durationMinutes * 60);
-    setIsTimerRunning(false);
-  };
-
-  const handleResetTimer = (): void => {
-    if (!currentStage) {
-      return;
-    }
-
-    setRemainingSeconds(currentStage.durationMinutes * 60);
-    setIsTimerRunning(false);
-  };
 
   return (
     <div className="participants-panel session-control-panel">
@@ -194,20 +168,23 @@ function SessionControlPanel({
 
       <div className="waiting-note">
         <p>
-          Рабочее пространство этой сессии открыто. Здесь доступны настройка этапов, управление таймером и запуск игры после полной подготовки.
+          Здесь отображается общий этап игры и единый таймер сессии. Тот же этап и тот же отсчёт будут видны участникам на командных экранах.
         </p>
       </div>
 
       <div className={shouldShowTimerTools ? 'session-control-grid' : 'session-control-grid session-control-grid--compact'}>
         {shouldShowTimerTools ? (
           <article className="info-card session-control-timer-card">
-            <span>Таймер этапа</span>
-            <strong className="stage-timer-display">{formatDuration(remainingSeconds)}</strong>
+            <span>Текущий этап</span>
+            <strong className="stage-timer-display">{formatRuntimeDuration(remainingSeconds)}</strong>
             <p className="participant-role-subtitle">
               {currentStage
-                ? `Этап ${currentStage.stageNumber}: ${currentStage.interactionMode === 'CHAT_ONLY' ? 'только чат' : 'чат и канбан'}`
+                ? `Этап ${currentStage.stageNumber}: ${getInteractionModeLabel(session.sessionRuntime.activeStageInteractionMode)}`
                 : 'Сначала настройте этапы сессии'}
             </p>
+            <span className="status-pill subtle-status-pill runtime-status-pill">
+              {getTimerStatusLabel(session.sessionRuntime.timerStatus)}
+            </span>
           </article>
         ) : null}
 
@@ -223,7 +200,8 @@ function SessionControlPanel({
                       key={stage.stageNumber}
                       type="button"
                       className={isSelected ? 'stage-selector-button active' : 'stage-selector-button'}
-                      onClick={() => selectStage(stage)}
+                      onClick={() => onSelectRuntimeStage(session.sessionCode, stage.stageNumber)}
+                      disabled={isActionPending}
                     >
                       Этап {stage.stageNumber}
                     </button>
@@ -242,26 +220,26 @@ function SessionControlPanel({
                 <button
                   type="button"
                   className="primary-button compact-button"
-                  onClick={() => setIsTimerRunning(true)}
-                  disabled={!currentStage || isTimerRunning || remainingSeconds === 0 || !isRunning}
+                  onClick={() => onStartRuntimeTimer(session.sessionCode)}
+                  disabled={!currentStage || session.sessionRuntime.timerStatus === 'RUNNING' || remainingSeconds === 0 || !isRunning || isActionPending}
                 >
-                  Пуск таймера
+                  {isActionPending && session.sessionRuntime.timerStatus !== 'RUNNING' ? 'Запуск...' : 'Пуск таймера'}
                 </button>
                 <button
                   type="button"
                   className="secondary-button compact-button"
-                  onClick={() => setIsTimerRunning(false)}
-                  disabled={!isTimerRunning}
+                  onClick={() => onPauseRuntimeTimer(session.sessionCode)}
+                  disabled={session.sessionRuntime.timerStatus !== 'RUNNING' || isActionPending}
                 >
-                  Пауза таймера
+                  {isActionPending && session.sessionRuntime.timerStatus === 'RUNNING' ? 'Пауза...' : 'Пауза таймера'}
                 </button>
                 <button
                   type="button"
                   className="secondary-button compact-button"
-                  onClick={handleResetTimer}
-                  disabled={!currentStage}
+                  onClick={() => onResetRuntimeTimer(session.sessionCode)}
+                  disabled={!currentStage || isActionPending}
                 >
-                  Сбросить
+                  {isActionPending ? 'Сброс...' : 'Сбросить'}
                 </button>
               </div>
             </div>
@@ -344,6 +322,10 @@ function FacilitatorSessionPage({
   onSaveStages,
   onAssignRandomRoles,
   onAssignManualRole,
+  onSelectRuntimeStage,
+  onStartRuntimeTimer,
+  onPauseRuntimeTimer,
+  onResetRuntimeTimer,
   onStartSession,
   onPauseSession,
   onFinishSession,
@@ -612,6 +594,10 @@ function FacilitatorSessionPage({
             <SessionControlPanel
               session={session}
               actionSessionCode={actionSessionCode}
+              onSelectRuntimeStage={onSelectRuntimeStage}
+              onStartRuntimeTimer={onStartRuntimeTimer}
+              onPauseRuntimeTimer={onPauseRuntimeTimer}
+              onResetRuntimeTimer={onResetRuntimeTimer}
               onStartSession={onStartSession}
               onPauseSession={onPauseSession}
               onFinishSession={onFinishSession}
@@ -623,6 +609,10 @@ function FacilitatorSessionPage({
             <SessionControlPanel
               session={session}
               actionSessionCode={actionSessionCode}
+              onSelectRuntimeStage={onSelectRuntimeStage}
+              onStartRuntimeTimer={onStartRuntimeTimer}
+              onPauseRuntimeTimer={onPauseRuntimeTimer}
+              onResetRuntimeTimer={onResetRuntimeTimer}
               onStartSession={onStartSession}
               onPauseSession={onPauseSession}
               onFinishSession={onFinishSession}
