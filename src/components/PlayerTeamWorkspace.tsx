@@ -118,6 +118,30 @@ function PlayerTeamWorkspaceScreen({
         </div>
       </CollapsibleSection>
 
+      {hasTeam && workspace.inventoryVisible ? (
+        <CollapsibleSection
+          kicker="Склад команды"
+          title="Доступные предметы"
+          defaultExpanded={false}
+          badge={<span className="status-pill subtle-status-pill">Позиций: {workspace.teamInventory.length}</span>}
+        >
+          {workspace.teamInventory.length ? (
+            <div className="team-inventory-grid">
+              {workspace.teamInventory.map((item) => (
+                <article key={item.itemName} className="inventory-item-card">
+                  <span className="inventory-item-name">{item.itemName}</span>
+                  <strong className="inventory-item-quantity">{item.quantity} шт.</strong>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="waiting-note compact-note">
+              <p>Для вашей команды пока не сформирован стартовый набор предметов.</p>
+            </div>
+          )}
+        </CollapsibleSection>
+      ) : null}
+
       {!hasTeam ? (
         <div className="waiting-note">
           <p>

@@ -51,6 +51,11 @@ export interface PlayerSession {
   joinedAt: string;
 }
 
+export interface PlayerTeamInventoryItem {
+  itemName: string;
+  quantity: number;
+}
+
 export interface PlayerTeamWorkspaceMember {
   participantId: number;
   displayName: string;
@@ -92,6 +97,8 @@ export interface PlayerTeamWorkspace {
   teammates: PlayerTeamWorkspaceMember[];
   stages: SessionStageSetting[];
   sessionRuntime: SessionRuntime;
+  inventoryVisible: boolean;
+  teamInventory: PlayerTeamInventoryItem[];
 }
 
 export interface SessionParticipantSummary {
