@@ -1380,3 +1380,163 @@ button {
     width: 100%;
   }
 }
+
+.chief-doctor-plan-note {
+  margin-bottom: 1rem;
+}
+
+.hospital-plan-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.8fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.hospital-plan-shell {
+  border: 1px solid rgba(126, 173, 152, 0.3);
+  border-radius: 2rem;
+  background: linear-gradient(180deg, rgba(244, 251, 246, 0.98), rgba(235, 246, 239, 0.98));
+  padding: 1rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.hospital-plan-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.plan-frame {
+  fill: rgba(236, 247, 240, 0.9);
+  stroke: rgba(76, 128, 104, 0.35);
+  stroke-width: 2;
+}
+
+.plan-room-group {
+  cursor: pointer;
+  outline: none;
+}
+
+.plan-room {
+  fill: rgba(255, 255, 255, 0.96);
+  stroke: rgba(118, 161, 139, 0.42);
+  stroke-width: 2;
+  transition: fill 0.2s ease, stroke 0.2s ease, transform 0.2s ease;
+}
+
+.plan-room-group:hover .plan-room,
+.plan-room-group:focus-visible .plan-room,
+.plan-room-group.is-selected .plan-room {
+  stroke: rgba(37, 132, 72, 0.9);
+  stroke-width: 2.5;
+}
+
+.plan-room-group--normal .plan-room {
+  fill: rgba(238, 248, 241, 0.98);
+}
+
+.plan-room-group--warning .plan-room {
+  fill: rgba(255, 246, 215, 0.98);
+}
+
+.plan-room-group--critical .plan-room {
+  fill: rgba(255, 227, 227, 0.98);
+}
+
+.plan-room-label {
+  fill: #214536;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.plan-room-label--vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 9px;
+}
+
+.hospital-plan-sidebar {
+  position: sticky;
+  top: 1rem;
+}
+
+.hospital-room-summary {
+  border: 1px solid rgba(126, 173, 152, 0.28);
+  border-radius: 1.6rem;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 1.25rem;
+  box-shadow: 0 20px 44px rgba(62, 104, 84, 0.08);
+}
+
+.hospital-room-summary h3 {
+  margin: 0.35rem 0 1rem;
+  color: #17382c;
+  font-size: 1.55rem;
+  overflow-wrap: anywhere;
+}
+
+.hospital-room-summary--normal {
+  background: linear-gradient(180deg, rgba(243, 250, 245, 0.98), rgba(232, 245, 236, 0.98));
+}
+
+.hospital-room-summary--warning {
+  background: linear-gradient(180deg, rgba(255, 250, 233, 0.98), rgba(255, 244, 211, 0.98));
+}
+
+.hospital-room-summary--critical {
+  background: linear-gradient(180deg, rgba(255, 240, 240, 0.98), rgba(255, 227, 227, 0.98));
+}
+
+.hospital-room-metrics {
+  margin: 0;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.hospital-room-metrics div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.hospital-room-metrics dt {
+  color: #628074;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.hospital-room-metrics dd {
+  margin: 0;
+  color: #17382c;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.hospital-room-summary-note {
+  margin-top: 1rem;
+}
+.hospital-room-problems {
+  margin-top: 1.1rem;
+}
+
+.hospital-room-problems ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.45rem;
+  color: #254638;
+}
+
+.hospital-room-problems li {
+  line-height: 1.35;
+}
+
+
+@media (max-width: 960px) {
+  .hospital-plan-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .hospital-plan-sidebar {
+    position: static;
+  }
+}

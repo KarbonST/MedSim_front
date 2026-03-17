@@ -6,6 +6,7 @@ import { formatRuntimeDuration, getInteractionModeLabel, getRuntimeRemainingSeco
 import CollapsibleSection from './CollapsibleSection';
 import TeamChatFeed from './TeamChatFeed';
 import { usePlayerTeamChat } from '../hooks/usePlayerTeamChat';
+import ChiefDoctorHospitalPlan from './ChiefDoctorHospitalPlan';
 
 interface PlayerTeamWorkspaceProps {
   workspace: PlayerTeamWorkspace;
@@ -117,6 +118,20 @@ function PlayerTeamWorkspaceScreen({
           </article>
         </div>
       </CollapsibleSection>
+
+      {hasTeam && workspace.gameRole === 'Главный врач' ? (
+        <CollapsibleSection
+          kicker="План поликлиники"
+          title="Кабинеты и количество проблем"
+          defaultExpanded
+          badge={<span className="status-pill subtle-status-pill">Главный врач</span>}
+        >
+          <div className="waiting-note compact-note chief-doctor-plan-note">
+            <p>На плане видны кабинеты поликлиники, цвет их состояния и количество проблем в каждом помещении.</p>
+          </div>
+          <ChiefDoctorHospitalPlan />
+        </CollapsibleSection>
+      ) : null}
 
       {hasTeam && workspace.inventoryVisible ? (
         <CollapsibleSection
