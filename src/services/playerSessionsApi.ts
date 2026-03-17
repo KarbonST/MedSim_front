@@ -7,6 +7,7 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 const API_PREFIX = `${API_BASE_URL}/api`;
+const GENERIC_HTTP_MESSAGES = new Set(['Bad Request', 'Unauthorized', 'Forbidden', 'Not Found', 'Conflict']);
 
 async function parseErrorMessage(response: Response, fallbackMessage: string): Promise<string> {
   const contentType = response.headers.get('content-type') ?? '';
@@ -18,13 +19,19 @@ async function parseErrorMessage(response: Response, fallbackMessage: string): P
 
     const message = payload?.detail ?? payload?.message ?? payload?.error ?? payload?.title;
 
-    if (message) {
+    if (message && !GENERIC_HTTP_MESSAGES.has(message.trim())) {
       return message;
     }
   }
 
   const text = await response.text().catch(() => '');
-  return text.trim() || fallbackMessage;
+  const normalizedText = text.trim();
+
+  if (normalizedText && !GENERIC_HTTP_MESSAGES.has(normalizedText)) {
+    return normalizedText;
+  }
+
+  return fallbackMessage;
 }
 
 export async function fetchAvailablePlayerSessions(): Promise<AvailablePlayerSession[]> {
@@ -59,7 +66,7 @@ export async function joinPlayerSession(
       : response.status === 404
         ? 'Сессия с таким кодом не найдена. Проверьте код комнаты или выберите сессию из списка.'
         : response.status === 409
-          ? 'В уже начатую сессию можно вернуться только под теми же именем и должностью, которые использовались раньше.'
+          ? 'Не удалось вернуться в сессию. Проверьте код комнаты, имя и должность: повторный вход после старта доступен только под теми же данными, которые использовались раньше.'
           : 'Не удалось подключиться к сессии. Попробуйте ещё раз.';
 
     throw new Error(await parseErrorMessage(response, fallbackMessage));
