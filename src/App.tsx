@@ -24,12 +24,14 @@ import {
   autoAssignTeams,
   createGameSession,
   deleteGameSession,
+  fetchGameSessionEconomy,
   finishGameSession,
   pauseGameSession,
   pauseGameSessionTimer,
   renameGameSession,
   renameGameSessionTeam,
   resetGameSessionTimer,
+  updateGameSessionEconomySettings,
   saveGameSessionStages,
   selectGameSessionRuntimeStage,
   startGameSession,
@@ -42,6 +44,7 @@ import type {
   Mode,
   PlayerFormState,
   PlayerWorkspaceState,
+  SessionEconomySettings,
   StaffFormState,
 } from './types/app';
 
@@ -74,6 +77,9 @@ function App() {
   const [facilitatorActionCode, setFacilitatorActionCode] = useState('');
   const [facilitatorActionError, setFacilitatorActionError] = useState('');
   const [facilitatorSetupLoading, setFacilitatorSetupLoading] = useState(false);
+  const [facilitatorEconomySettings, setFacilitatorEconomySettings] = useState<SessionEconomySettings | null>(null);
+  const [facilitatorEconomyLoading, setFacilitatorEconomyLoading] = useState(false);
+  const [facilitatorEconomySaving, setFacilitatorEconomySaving] = useState(false);
   const [facilitatorAutoTeamLoading, setFacilitatorAutoTeamLoading] = useState(false);
   const [facilitatorRandomRoleLoading, setFacilitatorRandomRoleLoading] = useState(false);
   const [facilitatorRoleParticipantId, setFacilitatorRoleParticipantId] = useState<number | null>(null);
@@ -199,7 +205,10 @@ function App() {
       return;
     }
 
-    void loadSession(facilitatorSessionCode, staffAuthHeader);
+    void Promise.all([
+      loadSession(facilitatorSessionCode, staffAuthHeader),
+      loadEconomySettings(facilitatorSessionCode, staffAuthHeader),
+    ]);
   }, [isFacilitatorWorkspaceOpen, staffAuthHeader, facilitatorSessionCode]);
 
   useEffect(() => {
@@ -257,6 +266,7 @@ function App() {
         setStaffAuthHeader('');
         setIsFacilitatorWorkspaceOpen(false);
         setFacilitatorSessionCode('');
+        setFacilitatorEconomySettings(null);
         resetOverview();
         resetSessions();
       }
@@ -318,6 +328,32 @@ function App() {
     }
   };
 
+  const loadEconomySettings = async (
+    sessionCode: string,
+    authHeader: string,
+    options?: { silent?: boolean },
+  ): Promise<void> => {
+    if (!options?.silent) {
+      setFacilitatorEconomyLoading(true);
+    }
+
+    try {
+      const payload = await fetchGameSessionEconomy(sessionCode, authHeader);
+      setFacilitatorEconomySettings(payload.settings);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось загрузить стартовые ресурсы команд.',
+      );
+      if (!options?.silent) {
+        setFacilitatorEconomySettings(null);
+      }
+    } finally {
+      if (!options?.silent) {
+        setFacilitatorEconomyLoading(false);
+      }
+    }
+  };
+
   const handleRefreshSessions = async (): Promise<void> => {
     if (!staffAuthHeader) {
       setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
@@ -337,6 +373,7 @@ function App() {
     await Promise.all([
       loadSessions(staffAuthHeader),
       loadSession(sessionCode, staffAuthHeader),
+      loadEconomySettings(sessionCode, staffAuthHeader, { silent: true }),
       loadAvailableSessions(),
     ]);
   };
@@ -370,6 +407,7 @@ function App() {
       await Promise.all([
         loadSessions(staffAuthHeader),
         loadSession(createdSession.sessionCode, staffAuthHeader),
+        loadEconomySettings(createdSession.sessionCode, staffAuthHeader),
         loadAvailableSessions(),
       ]);
       return true;
@@ -391,7 +429,43 @@ function App() {
 
     setFacilitatorActionError('');
     setFacilitatorSessionCode(sessionCode);
-    await loadSession(sessionCode, staffAuthHeader);
+    await Promise.all([
+      loadSession(sessionCode, staffAuthHeader),
+      loadEconomySettings(sessionCode, staffAuthHeader),
+    ]);
+  };
+
+  const handleSaveEconomySettings = async (
+    sessionCode: string,
+    startingBudget: string,
+    stageTimeUnits: number,
+  ): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    setFacilitatorActionError('');
+    setFacilitatorEconomySaving(true);
+
+    try {
+      const payload = await updateGameSessionEconomySettings(
+        sessionCode,
+        {
+          startingBudget,
+          stageTimeUnits,
+        },
+        staffAuthHeader,
+      );
+      setFacilitatorEconomySettings(payload.settings);
+      await syncAfterSessionMutation(sessionCode);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось сохранить стартовые ресурсы команд.',
+      );
+    } finally {
+      setFacilitatorEconomySaving(false);
+    }
   };
 
   const handleRenameSession = async (
@@ -755,6 +829,7 @@ function App() {
         || facilitatorSessionCode === sessionCode
       ) {
         setFacilitatorSessionCode('');
+        setFacilitatorEconomySettings(null);
         resetOverview();
       }
     } catch (error) {
@@ -780,6 +855,9 @@ function App() {
     setFacilitatorActionCode('');
     setFacilitatorActionError('');
     setFacilitatorSetupLoading(false);
+    setFacilitatorEconomyLoading(false);
+    setFacilitatorEconomySaving(false);
+    setFacilitatorEconomySettings(null);
     setFacilitatorAutoTeamLoading(false);
     setFacilitatorRandomRoleLoading(false);
     setFacilitatorRoleParticipantId(null);
@@ -839,6 +917,9 @@ function App() {
             teamAssignmentParticipantId={facilitatorTeamParticipantId}
             actionSessionCode={facilitatorActionCode}
             setupLoading={facilitatorSetupLoading}
+            economySettings={facilitatorEconomySettings}
+            economyLoading={facilitatorEconomyLoading}
+            economySaving={facilitatorEconomySaving}
             randomAssignmentLoading={facilitatorRandomRoleLoading}
             roleAssignmentParticipantId={facilitatorRoleParticipantId}
             error={facilitatorError}
@@ -852,6 +933,7 @@ function App() {
             onAutoAssignTeams={handleAutoAssignTeams}
             onAssignParticipantTeam={handleAssignParticipantTeam}
             onSaveStages={handleSaveStages}
+            onSaveEconomySettings={handleSaveEconomySettings}
             onAssignRandomRoles={handleAssignRandomRoles}
             onAssignManualRole={handleAssignManualRole}
             onSelectRuntimeStage={handleSelectRuntimeStage}

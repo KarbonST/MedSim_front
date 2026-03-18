@@ -123,6 +123,24 @@ export interface GameSessionStageSettingsRequest {
   stages: SessionStageSetting[];
 }
 
+export interface SessionEconomySettings {
+  startingBudget: number;
+  stageTimeUnits: number;
+}
+
+export interface GameSessionEconomyResponse {
+  sessionId: number;
+  sessionCode: string;
+  sessionName: string;
+  sessionStatus: string;
+  settings: SessionEconomySettings;
+}
+
+export interface GameSessionEconomySettingsUpdateRequest {
+  startingBudget: string;
+  stageTimeUnits: number;
+}
+
 export interface GameSessionCreateRequest {
   sessionName: string;
   teamCount: number;

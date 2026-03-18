@@ -5,6 +5,7 @@ import { stageInteractionModes } from '../constants/stageInteractionModes';
 import type {
   GameSessionParticipantsResponse,
   GameSessionStageSettingsRequest,
+  SessionEconomySettings,
   SessionParticipantSummary,
   SessionStageSetting,
   StageInteractionMode,
@@ -17,6 +18,9 @@ interface SessionSetupPanelProps {
   autoTeamAssignmentLoading: boolean;
   randomAssignmentLoading: boolean;
   savingStages: boolean;
+  economySettings: SessionEconomySettings | null;
+  economyLoading: boolean;
+  economySaving: boolean;
   teamRenameId: number | null;
   teamAssignmentParticipantId: number | null;
   roleAssignmentParticipantId: number | null;
@@ -34,6 +38,11 @@ interface SessionSetupPanelProps {
   onSaveStages: (
     sessionCode: string,
     request: GameSessionStageSettingsRequest,
+  ) => void | Promise<void>;
+  onSaveEconomySettings: (
+    sessionCode: string,
+    startingBudget: string,
+    stageTimeUnits: number,
   ) => void | Promise<void>;
   onAssignRandomRoles: (sessionCode: string) => void | Promise<void>;
   onAssignManualRole: (
@@ -104,6 +113,9 @@ function SessionSetupPanel({
   autoTeamAssignmentLoading,
   randomAssignmentLoading,
   savingStages,
+  economySettings,
+  economyLoading,
+  economySaving,
   teamRenameId,
   teamAssignmentParticipantId,
   roleAssignmentParticipantId,
@@ -111,10 +123,13 @@ function SessionSetupPanel({
   onAutoAssignTeams,
   onAssignParticipantTeam,
   onSaveStages,
+  onSaveEconomySettings,
   onAssignRandomRoles,
   onAssignManualRole,
 }: SessionSetupPanelProps) {
   const [stageDrafts, setStageDrafts] = useState<SessionStageSetting[]>(() => buildStageDrafts(session));
+  const [budgetDraft, setBudgetDraft] = useState(() => (economySettings ? economySettings.startingBudget.toFixed(2) : '15.00'));
+  const [stageTimeUnitsDraft, setStageTimeUnitsDraft] = useState(() => (economySettings ? String(economySettings.stageTimeUnits) : '15'));
   const [manualRoleDrafts, setManualRoleDrafts] = useState<Record<number, ManualRoleDraft>>(() => (
     buildManualRoleDrafts(session.participants)
   ));
@@ -136,8 +151,37 @@ function SessionSetupPanel({
     setTeamNameDrafts(buildTeamNameDrafts(session));
   }, [session.sessionId, session.teams]);
 
+  useEffect(() => {
+    if (!economySettings) {
+      return;
+    }
+
+    setBudgetDraft(economySettings.startingBudget.toFixed(2));
+    setStageTimeUnitsDraft(String(economySettings.stageTimeUnits));
+  }, [economySettings]);
+
   const isLobby = session.sessionStatus === 'LOBBY';
   const assignedTeamParticipantsCount = session.participants.filter((participant) => participant.teamId !== null).length;
+  const parsedBudget = Number.parseFloat(budgetDraft.replace(',', '.'));
+  const parsedStageTimeUnits = Number.parseInt(stageTimeUnitsDraft, 10);
+  const isEconomyDraftValid = Number.isFinite(parsedBudget) && parsedBudget >= 0.01 && !Number.isNaN(parsedStageTimeUnits) && parsedStageTimeUnits >= 1;
+  const normalizedDraftBudget = isEconomyDraftValid ? parsedBudget.toFixed(2) : '';
+  const normalizedCurrentBudget = economySettings ? Number(economySettings.startingBudget).toFixed(2) : '';
+  const isEconomyDraftChanged = economySettings
+    ? normalizedDraftBudget !== normalizedCurrentBudget || parsedStageTimeUnits !== economySettings.stageTimeUnits
+    : false;
+
+  const handleSaveEconomy = async (): Promise<void> => {
+    if (!economySettings || !isEconomyDraftValid) {
+      return;
+    }
+
+    await onSaveEconomySettings(
+      session.sessionCode,
+      parsedBudget.toFixed(2),
+      parsedStageTimeUnits,
+    );
+  };
 
   const handleStageCountChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const requestedCount = Number.parseInt(event.target.value, 10);
@@ -238,6 +282,67 @@ function SessionSetupPanel({
 
   return (
     <div className="session-setup-stack">
+      <CollapsibleSection
+        kicker="Стартовые ресурсы"
+        title="Бюджет и время команд"
+        defaultExpanded
+        badge={(
+          <span className="status-pill subtle-status-pill">
+            {economySettings
+              ? `Бюджет: ${Number(economySettings.startingBudget).toFixed(2)} · Время: ${economySettings.stageTimeUnits}`
+              : 'Загрузка...'}
+          </span>
+        )}
+      >
+        <div className="waiting-note">
+          <p>
+            Здесь задаются одинаковые стартовые ресурсы для всех команд. Пока сессия остаётся в подготовке, стартовый бюджет и ресурс времени на этап можно изменить и заново применить ко всем командам.
+          </p>
+        </div>
+
+        <div className="setup-toolbar">
+          <label className="field compact-field stage-count-field">
+            <span>Стартовый бюджет</span>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={budgetDraft}
+              onChange={(event) => setBudgetDraft(event.target.value)}
+              disabled={!isLobby || economySaving || economyLoading}
+            />
+          </label>
+
+          <label className="field compact-field stage-count-field">
+            <span>Время на этап</span>
+            <input
+              type="number"
+              min="1"
+              value={stageTimeUnitsDraft}
+              onChange={(event) => setStageTimeUnitsDraft(event.target.value)}
+              disabled={!isLobby || economySaving || economyLoading}
+            />
+          </label>
+
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => {
+              void handleSaveEconomy();
+            }}
+            disabled={!isLobby || economySaving || economyLoading || !economySettings || !isEconomyDraftValid || !isEconomyDraftChanged}
+          >
+            {economySaving ? 'Сохранение...' : 'Сохранить ресурсы'}
+          </button>
+        </div>
+
+        {!isEconomyDraftValid ? (
+          <p className="participant-role-subtitle">
+            Укажите бюджет не меньше 0.01 и время на этап не меньше 1.
+          </p>
+        ) : null}
+      </CollapsibleSection>
+
       <CollapsibleSection
         kicker="Команды"
         title="Состав и настройка команд"

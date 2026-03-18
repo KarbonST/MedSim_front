@@ -1,5 +1,7 @@
 import type {
   GameSessionCreateRequest,
+  GameSessionEconomyResponse,
+  GameSessionEconomySettingsUpdateRequest,
   GameSessionParticipantsResponse,
   GameSessionRenameRequest,
   GameSessionRoleAssignmentRequest,
@@ -171,6 +173,63 @@ export async function fetchGameSessionParticipants(
   }
 
   return response.json() as Promise<GameSessionParticipantsResponse>;
+}
+
+export async function fetchGameSessionEconomy(
+  sessionCode: string,
+  authHeader: string,
+): Promise<GameSessionEconomyResponse> {
+  const response = await fetch(
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/economy`,
+    {
+      headers: createAuthorizedHeaders(authHeader),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 404
+          ? 'Экономические настройки этой сессии пока не найдены.'
+          : response.status === 401
+            ? 'Нужно заново войти под учётной записью ведущего.'
+            : 'Не удалось загрузить стартовые ресурсы команд. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionEconomyResponse>;
+}
+
+export async function updateGameSessionEconomySettings(
+  sessionCode: string,
+  request: GameSessionEconomySettingsUpdateRequest,
+  authHeader: string,
+): Promise<GameSessionEconomyResponse> {
+  const response = await fetch(
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/economy/settings`,
+    {
+      method: 'PUT',
+      headers: createAuthorizedHeaders(authHeader, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось сохранить стартовый бюджет и ресурс времени. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionEconomyResponse>;
 }
 
 export async function autoAssignTeams(

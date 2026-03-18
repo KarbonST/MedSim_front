@@ -4,6 +4,7 @@ import type {
   GameSessionParticipantsResponse,
   GameSessionStageSettingsRequest,
   GameSessionSummary,
+  SessionEconomySettings,
   SessionStageSetting,
 } from '../types/app';
 import BrandHeader from './BrandHeader';
@@ -25,6 +26,9 @@ interface FacilitatorSessionPageProps {
   teamAssignmentParticipantId: number | null;
   actionSessionCode: string;
   setupLoading: boolean;
+  economySettings: SessionEconomySettings | null;
+  economyLoading: boolean;
+  economySaving: boolean;
   randomAssignmentLoading: boolean;
   roleAssignmentParticipantId: number | null;
   error: string;
@@ -53,6 +57,11 @@ interface FacilitatorSessionPageProps {
   onSaveStages: (
     sessionCode: string,
     request: GameSessionStageSettingsRequest,
+  ) => void | Promise<void>;
+  onSaveEconomySettings: (
+    sessionCode: string,
+    startingBudget: string,
+    stageTimeUnits: number,
   ) => void | Promise<void>;
   onAssignRandomRoles: (sessionCode: string) => void | Promise<void>;
   onAssignManualRole: (
@@ -302,6 +311,9 @@ function FacilitatorSessionPage({
   teamAssignmentParticipantId,
   actionSessionCode,
   setupLoading,
+  economySettings,
+  economyLoading,
+  economySaving,
   randomAssignmentLoading,
   roleAssignmentParticipantId,
   error,
@@ -315,6 +327,7 @@ function FacilitatorSessionPage({
   onAutoAssignTeams,
   onAssignParticipantTeam,
   onSaveStages,
+  onSaveEconomySettings,
   onAssignRandomRoles,
   onAssignManualRole,
   onSelectRuntimeStage,
@@ -559,6 +572,14 @@ function FacilitatorSessionPage({
               <span>Этапы</span>
               <strong>{session.stages.length}</strong>
             </article>
+            <article className="info-card">
+              <span>Стартовый бюджет</span>
+              <strong>{economySettings ? Number(economySettings.startingBudget).toFixed(2) : '—'}</strong>
+            </article>
+            <article className="info-card">
+              <span>Время на этап</span>
+              <strong>{economySettings ? economySettings.stageTimeUnits : '—'}</strong>
+            </article>
           </div>
 
           <div className="session-rename-inline-form">
@@ -598,6 +619,9 @@ function FacilitatorSessionPage({
               autoTeamAssignmentLoading={autoTeamAssignmentLoading}
               randomAssignmentLoading={randomAssignmentLoading}
               savingStages={setupLoading}
+              economySettings={economySettings}
+              economyLoading={economyLoading}
+              economySaving={economySaving}
               teamRenameId={teamRenameId}
               teamAssignmentParticipantId={teamAssignmentParticipantId}
               roleAssignmentParticipantId={roleAssignmentParticipantId}
@@ -605,6 +629,7 @@ function FacilitatorSessionPage({
               onAutoAssignTeams={onAutoAssignTeams}
               onAssignParticipantTeam={onAssignParticipantTeam}
               onSaveStages={onSaveStages}
+              onSaveEconomySettings={onSaveEconomySettings}
               onAssignRandomRoles={onAssignRandomRoles}
               onAssignManualRole={onAssignManualRole}
             />
