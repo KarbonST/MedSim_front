@@ -31,7 +31,12 @@ interface FacilitatorSessionPageProps {
   session: GameSessionParticipantsResponse | null;
   sessions: GameSessionSummary[];
   onRefreshSessions: () => void | Promise<void>;
-  onCreateSession: (sessionName: string, teamCount: number) => Promise<boolean>;
+  onCreateSession: (
+    sessionName: string,
+    teamCount: number,
+    startingBudget: string,
+    stageTimeUnits: number,
+  ) => Promise<boolean>;
   onRenameSession: (sessionCode: string, sessionName: string) => Promise<boolean>;
   onOpenSession: (sessionCode: string) => void | Promise<void>;
   onRenameTeam: (
@@ -324,6 +329,8 @@ function FacilitatorSessionPage({
 }: FacilitatorSessionPageProps) {
   const [creationName, setCreationName] = useState('');
   const [creationTeamCount, setCreationTeamCount] = useState('2');
+  const [creationBudget, setCreationBudget] = useState('15.00');
+  const [creationStageTimeUnits, setCreationStageTimeUnits] = useState('15');
   const [renameValue, setRenameValue] = useState('');
 
   useEffect(() => {
@@ -335,16 +342,20 @@ function FacilitatorSessionPage({
 
     const sessionName = creationName.trim();
     const teamCount = Number.parseInt(creationTeamCount, 10);
+    const stageTimeUnits = Number.parseInt(creationStageTimeUnits, 10);
+    const startingBudget = creationBudget.trim();
 
-    if (!sessionName || Number.isNaN(teamCount)) {
+    if (!sessionName || Number.isNaN(teamCount) || Number.isNaN(stageTimeUnits) || !startingBudget) {
       return;
     }
 
-    const created = await onCreateSession(sessionName, teamCount);
+    const created = await onCreateSession(sessionName, teamCount, startingBudget, stageTimeUnits);
 
     if (created) {
       setCreationName('');
       setCreationTeamCount('2');
+      setCreationBudget('15.00');
+      setCreationStageTimeUnits('15');
     }
   };
 
@@ -412,6 +423,27 @@ function FacilitatorSessionPage({
             />
           </label>
 
+          <label className="field compact-field team-count-creation-field">
+            <span>Стартовый бюджет</span>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={creationBudget}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => setCreationBudget(event.target.value)}
+            />
+          </label>
+
+          <label className="field compact-field team-count-creation-field">
+            <span>Время на этап</span>
+            <input
+              type="number"
+              min="1"
+              value={creationStageTimeUnits}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => setCreationStageTimeUnits(event.target.value)}
+            />
+          </label>
+
           <button
             type="submit"
             className="primary-button"
@@ -423,7 +455,7 @@ function FacilitatorSessionPage({
 
         <div className="waiting-note compact-note">
           <p>
-            Укажите название и количество команд. Код сессии и стартовые названия сформируются автоматически. После создания станут доступны распределение игроков, настройка этапов и назначение ролей.
+            Укажите название, количество команд и стартовые ресурсы сессии. Код комнаты и стартовые названия команд сформируются автоматически. Если значения не менять, в новой игре сохранятся дефолтные настройки: 15.00 денежных единиц и 15 единиц времени на этап.
           </p>
         </div>
       </CollapsibleSection>

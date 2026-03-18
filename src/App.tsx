@@ -344,6 +344,8 @@ function App() {
   const handleCreateSession = async (
     sessionName: string,
     teamCount: number,
+    startingBudget: string,
+    stageTimeUnits: number,
   ): Promise<boolean> => {
     if (!staffAuthHeader) {
       setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
@@ -358,6 +360,8 @@ function App() {
         {
           sessionName,
           teamCount,
+          startingBudget,
+          stageTimeUnits,
         },
         staffAuthHeader,
       );

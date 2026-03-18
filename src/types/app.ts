@@ -126,6 +126,8 @@ export interface GameSessionStageSettingsRequest {
 export interface GameSessionCreateRequest {
   sessionName: string;
   teamCount: number;
+  startingBudget: string;
+  stageTimeUnits: number;
 }
 
 export interface GameSessionRenameRequest {
