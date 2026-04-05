@@ -138,6 +138,29 @@ src
 
 ## Запуск
 
+### Вариант 1. Весь стек одной командой
+
+Для полного запуска `frontend + backend + PostgreSQL` используется `docker compose` из соседнего backend-репозитория:
+
+```bash
+cd /Users/mihailbykadorov/Desktop/MedSim/MedSim_back
+cp .env.example .env
+docker compose --env-file .env up --build -d
+```
+
+После запуска приложение доступно на:
+
+- `http://localhost:5173`
+
+Остановка:
+
+```bash
+cd /Users/mihailbykadorov/Desktop/MedSim/MedSim_back
+docker compose down
+```
+
+### Вариант 2. Локальная frontend-разработка
+
 ```bash
 cd /Users/mihailbykadorov/Desktop/MedSim/MedSim_front
 npm install
@@ -157,7 +180,10 @@ npm run build
 
 ## Backend API
 
-По умолчанию фронт обращается к backend через относительный префикс `/api`. В режиме разработки `Vite` проксирует эти запросы на локальный backend `http://127.0.0.1:8080`, поэтому одной публичной ссылки на фронт достаточно и для работы с backend. Для realtime-чата через тот же dev-сервер проксируется и `WebSocket /ws/team-chat`.
+По умолчанию фронт обращается к backend через относительный префикс `/api`.
+
+- в режиме разработки `Vite` проксирует запросы на локальный backend `http://127.0.0.1:8080`;
+- в Docker-режиме статический frontend раздаётся `Nginx`, который так же проксирует `/api` и `WebSocket /ws/team-chat` на backend-контейнер.
 
 Если нужно обращаться к backend напрямую, это можно переопределить через `VITE_API_BASE_URL`.
 
