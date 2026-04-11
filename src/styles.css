@@ -329,14 +329,14 @@ button {
 }
 
 .collapsible-section-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 34px;
+  align-items: center;
   gap: 16px;
 }
 
 .collapsible-section-trigger {
-  flex: 1;
+  grid-column: 1;
   min-width: 0;
   border: 0;
   padding: 0;
@@ -344,21 +344,79 @@ button {
   color: inherit;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
+  justify-content: flex-start;
   text-align: left;
+  cursor: pointer;
 }
 
 .collapsible-section-trigger h3 {
   margin: 8px 0 0;
 }
 
+.collapsible-section-toggle {
+  grid-column: 3;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  cursor: pointer;
+}
+
+.collapsible-section-chevron {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #bed9c5;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 8px 18px rgba(55, 91, 66, 0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+.collapsible-section-chevron::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid #3f6f4d;
+  border-bottom: 2px solid #3f6f4d;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 180ms ease;
+}
+
+.collapsible-section-toggle:hover .collapsible-section-chevron,
+.collapsible-section-toggle:focus-visible .collapsible-section-chevron {
+  background: #ffffff;
+  border-color: #8fbc9a;
+}
+
+.collapsible-section-trigger:focus-visible,
+.collapsible-section-toggle:focus-visible {
+  outline: 3px solid rgba(88, 153, 105, 0.28);
+  outline-offset: 6px;
+  border-radius: 18px;
+}
+
+.collapsible-section-chevron--expanded::before {
+  transform: translateY(2px) rotate(225deg);
+}
+
 .collapsible-section-side {
+  grid-column: 2;
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  justify-self: end;
 }
 
 .collapsible-section-body {
@@ -540,13 +598,30 @@ button {
   }
 
   .participants-panel-header,
-  .collapsible-section-header,
-  .collapsible-section-trigger,
   .collapsible-section-side,
   .room-hero,
   .session-card-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .collapsible-section-header {
+    grid-template-columns: minmax(0, 1fr) 34px;
+    align-items: center;
+  }
+
+  .collapsible-section-trigger {
+    width: 100%;
+  }
+
+  .collapsible-section-side {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .collapsible-section-toggle {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .back-button,

@@ -20,6 +20,7 @@ function CollapsibleSection({
   defaultExpanded = true,
 }: CollapsibleSectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const toggleExpanded = () => setExpanded((current) => !current);
 
   return (
     <section className={`participants-panel collapsible-section ${className}`.trim()}>
@@ -27,7 +28,7 @@ function CollapsibleSection({
         <button
           type="button"
           className="collapsible-section-trigger"
-          onClick={() => setExpanded((current) => !current)}
+          onClick={toggleExpanded}
           aria-expanded={expanded}
         >
           <div>
@@ -42,6 +43,19 @@ function CollapsibleSection({
             {actions}
           </div>
         ) : null}
+
+        <button
+          type="button"
+          className="collapsible-section-toggle"
+          onClick={toggleExpanded}
+          aria-expanded={expanded}
+          aria-label={expanded ? `Свернуть ${title}` : `Развернуть ${title}`}
+        >
+          <span
+            className={`collapsible-section-chevron${expanded ? ' collapsible-section-chevron--expanded' : ''}`}
+            aria-hidden="true"
+          />
+        </button>
       </div>
 
       {expanded ? <div className="collapsible-section-body">{children}</div> : null}
