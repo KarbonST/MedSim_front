@@ -1,6 +1,8 @@
 import type { ChangeEvent, FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import type {
+  GameSessionEconomyResponse,
+  GameSessionKanbanResponse,
   GameSessionParticipantsResponse,
   GameSessionStageSettingsRequest,
   GameSessionSummary,
@@ -27,6 +29,8 @@ interface FacilitatorSessionPageProps {
   actionSessionCode: string;
   setupLoading: boolean;
   economySettings: SessionEconomySettings | null;
+  economyOverview: GameSessionEconomyResponse | null;
+  kanbanOverview: GameSessionKanbanResponse | null;
   economyLoading: boolean;
   economySaving: boolean;
   randomAssignmentLoading: boolean;
@@ -52,7 +56,7 @@ interface FacilitatorSessionPageProps {
   onAssignParticipantTeam: (
     sessionCode: string,
     participantId: number,
-    teamId: number,
+    teamId: number | null,
   ) => void | Promise<void>;
   onSaveStages: (
     sessionCode: string,
@@ -312,6 +316,8 @@ function FacilitatorSessionPage({
   actionSessionCode,
   setupLoading,
   economySettings,
+  economyOverview,
+  kanbanOverview,
   economyLoading,
   economySaving,
   randomAssignmentLoading,
@@ -647,7 +653,13 @@ function FacilitatorSessionPage({
           </>
         ) : (
           <>
-            <FacilitatorLiveDashboard session={session} loading={loading} authHeader={authHeader} />
+            <FacilitatorLiveDashboard
+              session={session}
+              loading={loading}
+              authHeader={authHeader}
+              economyOverview={economyOverview}
+              kanbanOverview={kanbanOverview}
+            />
             <SessionControlPanel
               session={session}
               actionSessionCode={actionSessionCode}

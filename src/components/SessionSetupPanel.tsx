@@ -8,6 +8,7 @@ import type {
   SessionEconomySettings,
   SessionParticipantSummary,
   SessionStageSetting,
+  SessionTeamSummary,
   StageInteractionMode,
 } from '../types/app';
 import CollapsibleSection from './CollapsibleSection';
@@ -33,7 +34,7 @@ interface SessionSetupPanelProps {
   onAssignParticipantTeam: (
     sessionCode: string,
     participantId: number,
-    teamId: number,
+    teamId: number | null,
   ) => void | Promise<void>;
   onSaveStages: (
     sessionCode: string,
@@ -57,6 +58,13 @@ interface ManualRoleDraft {
   customRole: string;
 }
 
+interface RoleParticipantGroup {
+  key: string;
+  title: string;
+  team: SessionTeamSummary | null;
+  participants: SessionParticipantSummary[];
+}
+
 function createDefaultStages(count: number): SessionStageSetting[] {
   return Array.from({ length: count }, (_, index) => ({
     stageNumber: index + 1,
@@ -67,7 +75,7 @@ function createDefaultStages(count: number): SessionStageSetting[] {
 
 function buildStageDrafts(session: GameSessionParticipantsResponse): SessionStageSetting[] {
   if (!session.stages.length) {
-    return createDefaultStages(2);
+    return createDefaultStages(4);
   }
 
   return [...session.stages].sort((left, right) => left.stageNumber - right.stageNumber);
@@ -107,6 +115,45 @@ function buildParticipantTeamDrafts(
   }, {});
 }
 
+function buildTeamRoleParticipantGroups(
+  participants: SessionParticipantSummary[],
+  teams: SessionTeamSummary[],
+): RoleParticipantGroup[] {
+  if (!teams.length) {
+    return [{
+      key: 'mixed-participants',
+      title: 'Все игроки',
+      team: null,
+      participants,
+    }];
+  }
+
+  const groups: RoleParticipantGroup[] = [];
+  const participantsWithoutTeam = participants.filter((participant) => participant.teamId === null);
+
+  if (participantsWithoutTeam.length > 0) {
+    groups.push({
+      key: 'without-team',
+      title: 'Игроки без команды',
+      team: null,
+      participants: participantsWithoutTeam,
+    });
+  }
+
+  [...teams]
+    .sort((left, right) => left.sortOrder - right.sortOrder)
+    .forEach((team) => {
+      groups.push({
+        key: `team-${team.teamId}`,
+        title: team.teamName,
+        team,
+        participants: participants.filter((participant) => participant.teamId === team.teamId),
+      });
+    });
+
+  return groups;
+}
+
 function SessionSetupPanel({
   session,
   loading,
@@ -137,6 +184,8 @@ function SessionSetupPanel({
   const [participantTeamDrafts, setParticipantTeamDrafts] = useState<Record<number, string>>(() => (
     buildParticipantTeamDrafts(session.participants)
   ));
+  const [expandedRoleParticipantIds, setExpandedRoleParticipantIds] = useState<Set<number>>(() => new Set());
+  const [collapsedTeamRoleGroupKeys, setCollapsedTeamRoleGroupKeys] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     setStageDrafts(buildStageDrafts(session));
@@ -145,6 +194,25 @@ function SessionSetupPanel({
   useEffect(() => {
     setManualRoleDrafts(buildManualRoleDrafts(session.participants));
     setParticipantTeamDrafts(buildParticipantTeamDrafts(session.participants));
+  }, [session.sessionId, session.participants]);
+
+  useEffect(() => {
+    setExpandedRoleParticipantIds((current) => {
+      const availableParticipantIds = new Set(session.participants.map((participant) => participant.participantId));
+      const nextExpandedParticipantIds = new Set<number>();
+      let hasRemovedParticipant = false;
+
+      current.forEach((participantId) => {
+        if (availableParticipantIds.has(participantId)) {
+          nextExpandedParticipantIds.add(participantId);
+          return;
+        }
+
+        hasRemovedParticipant = true;
+      });
+
+      return hasRemovedParticipant ? nextExpandedParticipantIds : current;
+    });
   }, [session.sessionId, session.participants]);
 
   useEffect(() => {
@@ -170,6 +238,7 @@ function SessionSetupPanel({
   const isEconomyDraftChanged = economySettings
     ? normalizedDraftBudget !== normalizedCurrentBudget || parsedStageTimeUnits !== economySettings.stageTimeUnits
     : false;
+  const teamRoleParticipantGroups = buildTeamRoleParticipantGroups(session.participants, session.teams);
 
   const handleSaveEconomy = async (): Promise<void> => {
     if (!economySettings || !isEconomyDraftValid) {
@@ -271,13 +340,202 @@ function SessionSetupPanel({
   };
 
   const handleAssignTeam = async (participantId: number): Promise<void> => {
-    const selectedTeamId = Number.parseInt(participantTeamDrafts[participantId] ?? '', 10);
+    const teamDraft = participantTeamDrafts[participantId] ?? '';
+    const selectedTeamId = teamDraft === '' ? null : Number.parseInt(teamDraft, 10);
 
-    if (Number.isNaN(selectedTeamId)) {
+    if (selectedTeamId !== null && Number.isNaN(selectedTeamId)) {
       return;
     }
 
     await onAssignParticipantTeam(session.sessionCode, participantId, selectedTeamId);
+  };
+
+  const toggleRoleParticipantExpanded = (participantId: number): void => {
+    setExpandedRoleParticipantIds((current) => {
+      const nextExpandedParticipantIds = new Set(current);
+
+      if (nextExpandedParticipantIds.has(participantId)) {
+        nextExpandedParticipantIds.delete(participantId);
+      } else {
+        nextExpandedParticipantIds.add(participantId);
+      }
+
+      return nextExpandedParticipantIds;
+    });
+  };
+
+  const toggleTeamRoleGroupCollapsed = (groupKey: string): void => {
+    setCollapsedTeamRoleGroupKeys((current) => {
+      const nextCollapsedGroupKeys = new Set(current);
+
+      if (nextCollapsedGroupKeys.has(groupKey)) {
+        nextCollapsedGroupKeys.delete(groupKey);
+      } else {
+        nextCollapsedGroupKeys.add(groupKey);
+      }
+
+      return nextCollapsedGroupKeys;
+    });
+  };
+
+  const renderRoleParticipantCard = (participant: SessionParticipantSummary) => {
+    const roleDraft = manualRoleDrafts[participant.participantId] ?? {
+      selectedRole: '',
+      customRole: '',
+    };
+    const resolvedRole = resolveGameRole(participant.participantId);
+    const isParticipantUpdating = roleAssignmentParticipantId === participant.participantId;
+    const isTeamUpdating = teamAssignmentParticipantId === participant.participantId;
+    const teamDraft = participantTeamDrafts[participant.participantId] ?? '';
+    const hasTeam = participant.teamId !== null;
+    const isExpanded = expandedRoleParticipantIds.has(participant.participantId);
+    const currentGameRole = participant.gameRole ?? 'Пока не назначена';
+    const currentTeamDraft = participant.teamId === null ? '' : String(participant.teamId);
+    const isTeamDraftChanged = teamDraft !== currentTeamDraft;
+    const teamActionLabel = hasTeam && teamDraft === '' ? 'Убрать из команды' : 'Переместить';
+
+    return (
+      <article
+        key={participant.participantId}
+        className={`participant-card participant-role-card${isExpanded ? ' participant-role-card--expanded' : ''}`}
+      >
+        <button
+          type="button"
+          className="participant-role-card-toggle"
+          onClick={() => toggleRoleParticipantExpanded(participant.participantId)}
+          aria-expanded={isExpanded}
+        >
+          <span className="participant-role-card-summary">
+            <strong>{participant.displayName}</strong>
+            <span className="participant-role-compact-role">
+              Игровая роль: {currentGameRole}
+            </span>
+          </span>
+          <span
+            className={`collapsible-section-chevron participant-role-card-chevron${isExpanded ? ' collapsible-section-chevron--expanded' : ''}`}
+            aria-hidden="true"
+          />
+        </button>
+
+        {isExpanded ? (
+          <div className="participant-role-card-body">
+            <p className="participant-role-subtitle">
+              Реальная должность: {participant.hospitalPosition}
+            </p>
+
+            <dl className="participant-details participant-management-details">
+              <div>
+                <dt>Команда</dt>
+                <dd>{participant.teamName ?? 'Пока не назначена'}</dd>
+              </div>
+              <div>
+                <dt>Текущая игровая роль</dt>
+                <dd>{currentGameRole}</dd>
+              </div>
+            </dl>
+
+            <div className="participant-role-form participant-team-form">
+              <label className="field compact-field">
+                <span>Команда участника</span>
+                <select
+                  value={teamDraft}
+                  onChange={(event) => {
+                    setParticipantTeamDrafts((current) => ({
+                      ...current,
+                      [participant.participantId]: event.target.value,
+                    }));
+                  }}
+                  disabled={!isLobby || isTeamUpdating}
+                >
+                  <option value="">Выберите команду</option>
+                  {session.teams.map((team) => (
+                    <option key={team.teamId} value={team.teamId}>
+                      {team.teamName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <button
+                type="button"
+                className="secondary-button compact-button"
+                onClick={() => {
+                  void handleAssignTeam(participant.participantId);
+                }}
+                disabled={!isLobby || isTeamUpdating || !isTeamDraftChanged}
+              >
+                {isTeamUpdating ? 'Перенос...' : teamActionLabel}
+              </button>
+            </div>
+
+            <div className="participant-role-form">
+              <label className="field compact-field">
+                <span>Выбор роли</span>
+                <select
+                  value={roleDraft.selectedRole}
+                  onChange={(event) => {
+                    updateManualRoleDraft(
+                      participant.participantId,
+                      'selectedRole',
+                      event.target.value,
+                    );
+                  }}
+                  disabled={!isLobby || isParticipantUpdating || !hasTeam}
+                >
+                  <option value="">Выберите роль</option>
+                  {commonGameRoles.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                  <option value={customGameRoleOption}>Своя роль</option>
+                </select>
+              </label>
+
+              {roleDraft.selectedRole === customGameRoleOption ? (
+                <label className="field compact-field">
+                  <span>Название роли</span>
+                  <input
+                    type="text"
+                    value={roleDraft.customRole}
+                    placeholder="Например, Старшая медсестра"
+                    onChange={(event) => {
+                      updateManualRoleDraft(
+                        participant.participantId,
+                        'customRole',
+                        event.target.value,
+                      );
+                    }}
+                    disabled={!isLobby || isParticipantUpdating || !hasTeam}
+                  />
+                </label>
+              ) : null}
+
+              <button
+                type="button"
+                className="primary-button compact-button"
+                onClick={() => {
+                  void onAssignManualRole(
+                    session.sessionCode,
+                    participant.participantId,
+                    resolvedRole,
+                  );
+                }}
+                disabled={!isLobby || isParticipantUpdating || !resolvedRole || !hasTeam}
+              >
+                {isParticipantUpdating ? 'Назначение...' : 'Назначить роль'}
+              </button>
+            </div>
+
+            {!hasTeam ? (
+              <p className="participant-team-warning">
+                Чтобы назначить роль, сначала выберите команду участника.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </article>
+    );
   };
 
   return (
@@ -296,7 +554,7 @@ function SessionSetupPanel({
       >
         <div className="waiting-note">
           <p>
-            Здесь задаются одинаковые стартовые ресурсы для всех команд. Пока сессия остаётся в подготовке, стартовый бюджет и ресурс времени на этап можно изменить и заново применить ко всем командам.
+            Задайте стартовый бюджет и время на этап. Эти значения одинаковы для всех команд и меняются только до запуска игры.
           </p>
         </div>
 
@@ -344,74 +602,135 @@ function SessionSetupPanel({
       </CollapsibleSection>
 
       <CollapsibleSection
-        kicker="Команды"
-        title="Состав и настройка команд"
+        kicker="Команды и роли"
+        title="Настройка команд"
         defaultExpanded
         actions={(
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => {
-              void onAutoAssignTeams(session.sessionCode);
-            }}
-            disabled={!isLobby || autoTeamAssignmentLoading || loading || session.participants.length === 0}
-          >
-            {autoTeamAssignmentLoading ? 'Распределение...' : 'Распределить по командам'}
-          </button>
+          <>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => {
+                void onAutoAssignTeams(session.sessionCode);
+              }}
+              disabled={!isLobby || autoTeamAssignmentLoading || loading || session.participants.length === 0}
+            >
+              {autoTeamAssignmentLoading ? 'Распределение...' : 'Распределить по командам случайно'}
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => {
+                void onAssignRandomRoles(session.sessionCode);
+              }}
+              disabled={!isLobby || randomAssignmentLoading || loading || assignedTeamParticipantsCount < 3}
+            >
+              {randomAssignmentLoading ? 'Распределение...' : 'Распределить роли случайно'}
+            </button>
+          </>
         )}
       >
         <div className="waiting-note">
           <p>
-            Здесь доступны переименование команд и распределение игроков. При запуске автораспределения участники распределятся по командам максимально равномерно.
+            Распределите игроков, при необходимости переименуйте команды и назначьте роли. Раскройте команду, чтобы работать с её участниками.
           </p>
         </div>
 
-        <div className="team-cards">
-          {session.teams.map((team) => {
-            const draftName = teamNameDrafts[team.teamId] ?? team.teamName;
+        <div className="team-role-groups">
+          {teamRoleParticipantGroups.map((group) => {
+            const isGroupCollapsed = collapsedTeamRoleGroupKeys.has(group.key);
+            const assignedRolesCount = group.participants.filter((participant) => participant.gameRole).length;
+            const draftName = group.team ? (teamNameDrafts[group.team.teamId] ?? group.team.teamName) : '';
 
             return (
-              <article key={team.teamId} className="team-card">
-                <div className="team-card-header">
-                  <div>
-                    <span className="team-order-badge">Команда {team.sortOrder}</span>
-                    <strong>{team.teamName}</strong>
+              <article
+                key={group.key}
+                className={`team-role-group${isGroupCollapsed ? '' : ' team-role-group--expanded'}`}
+              >
+                <button
+                  type="button"
+                  className="team-role-group-toggle"
+                  onClick={() => toggleTeamRoleGroupCollapsed(group.key)}
+                  aria-expanded={!isGroupCollapsed}
+                >
+                  <span className="team-role-group-title">
+                    <strong>{group.title}</strong>
+                    <span>
+                      {group.participants.length > 0
+                        ? `Игроков: ${group.participants.length} · Ролей: ${assignedRolesCount}/${group.participants.length}`
+                        : 'Пока нет игроков'}
+                    </span>
+                  </span>
+                  <span
+                    className={`collapsible-section-chevron team-role-group-chevron${isGroupCollapsed ? '' : ' collapsible-section-chevron--expanded'}`}
+                    aria-hidden="true"
+                  />
+                </button>
+
+                {!isGroupCollapsed ? (
+                  <div className="team-role-group-body">
+                    {group.team ? (
+                      <div className="team-edit-form team-role-name-form">
+                        <label className="field compact-field">
+                          <span>Название команды</span>
+                          <input
+                            type="text"
+                            value={draftName}
+                            onChange={(event) => {
+                              if (!group.team) {
+                                return;
+                              }
+
+                              setTeamNameDrafts((current) => ({
+                                ...current,
+                                [group.team.teamId]: event.target.value,
+                              }));
+                            }}
+                            disabled={!isLobby || teamRenameId === group.team.teamId}
+                          />
+                        </label>
+
+                        <button
+                          type="button"
+                          className="primary-button compact-button"
+                          onClick={() => {
+                            if (!group.team) {
+                              return;
+                            }
+
+                            void handleRenameTeam(group.team.teamId, group.team.teamName);
+                          }}
+                          disabled={
+                            !isLobby
+                            || teamRenameId === group.team.teamId
+                            || !draftName.trim()
+                            || draftName.trim() === group.team.teamName
+                          }
+                        >
+                          {teamRenameId === group.team.teamId ? 'Сохранение...' : 'Сохранить название'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="waiting-note waiting-note-inline">
+                        <p>
+                          Здесь игроки, которых ещё не добавили в команду. Раскройте карточку игрока и выберите команду.
+                        </p>
+                      </div>
+                    )}
+
+                    {group.participants.length > 0 ? (
+                      <div className="participants-list role-management-list">
+                        {group.participants.map((participant) => renderRoleParticipantCard(participant))}
+                      </div>
+                    ) : (
+                      <div className="waiting-note waiting-note-inline">
+                        <p>
+                          Пока в команде нет игроков. Добавьте их вручную из блока “Игроки без команды” или используйте случайное распределение.
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  <span className="status-pill subtle-status-pill">Игроков: {team.memberCount}</span>
-                </div>
-
-                <div className="team-edit-form">
-                  <label className="field compact-field">
-                    <span>Название команды</span>
-                    <input
-                      type="text"
-                      value={draftName}
-                      onChange={(event) => {
-                        setTeamNameDrafts((current) => ({
-                          ...current,
-                          [team.teamId]: event.target.value,
-                        }));
-                      }}
-                      disabled={!isLobby || teamRenameId === team.teamId}
-                    />
-                  </label>
-
-                  <button
-                    type="button"
-                    className="primary-button compact-button"
-                    onClick={() => {
-                      void handleRenameTeam(team.teamId, team.teamName);
-                    }}
-                    disabled={
-                      !isLobby
-                      || teamRenameId === team.teamId
-                      || !draftName.trim()
-                      || draftName.trim() === team.teamName
-                    }
-                  >
-                    {teamRenameId === team.teamId ? 'Сохранение...' : 'Сохранить'}
-                  </button>
-                </div>
+                ) : null}
               </article>
             );
           })}
@@ -454,7 +773,7 @@ function SessionSetupPanel({
 
         {!isLobby ? (
           <div className="waiting-note">
-            <p>Игра уже запущена. Настройка этапов, команд и ролей для этой сессии недоступна.</p>
+            <p>Игра уже запущена. Этапы этой сессии больше нельзя менять.</p>
           </div>
         ) : null}
 
@@ -518,167 +837,6 @@ function SessionSetupPanel({
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection
-        kicker="Игровые роли"
-        title="Распределение по участникам"
-        defaultExpanded={false}
-        actions={(
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => {
-              void onAssignRandomRoles(session.sessionCode);
-            }}
-            disabled={!isLobby || randomAssignmentLoading || loading || assignedTeamParticipantsCount < 3}
-          >
-            {randomAssignmentLoading ? 'Распределение...' : 'Распределить роли случайно'}
-          </button>
-        )}
-      >
-        <div className="waiting-note">
-          <p>
-            Сначала распределите участников по командам, а затем выдавайте роли. При автораспределении автоматически назначатся главный врач, главная медсестра и главный инженер, а совпадения с реальной должностью игрока будут исключены. Для этого в командах должно быть минимум 3 уже распределённых участника.
-          </p>
-        </div>
-
-        <div className="participants-list role-management-list">
-          {session.participants.map((participant, index) => {
-            const roleDraft = manualRoleDrafts[participant.participantId] ?? {
-              selectedRole: '',
-              customRole: '',
-            };
-            const resolvedRole = resolveGameRole(participant.participantId);
-            const isParticipantUpdating = roleAssignmentParticipantId === participant.participantId;
-            const isTeamUpdating = teamAssignmentParticipantId === participant.participantId;
-            const teamDraft = participantTeamDrafts[participant.participantId] ?? '';
-            const hasTeam = participant.teamId !== null;
-
-            return (
-              <article key={participant.participantId} className="participant-card participant-role-card">
-                <div className="participant-card-header">
-                  <span className="participant-index">#{index + 1}</span>
-                  <div>
-                    <strong>{participant.displayName}</strong>
-                    <p className="participant-role-subtitle">
-                      Реальная должность: {participant.hospitalPosition}
-                    </p>
-                  </div>
-                </div>
-
-                <dl className="participant-details participant-management-details">
-                  <div>
-                    <dt>Команда</dt>
-                    <dd>{participant.teamName ?? 'Пока не назначена'}</dd>
-                  </div>
-                  <div>
-                    <dt>Текущая игровая роль</dt>
-                    <dd>{participant.gameRole ?? 'Пока не назначена'}</dd>
-                  </div>
-                </dl>
-
-                <div className="participant-role-form participant-team-form">
-                  <label className="field compact-field">
-                    <span>Команда участника</span>
-                    <select
-                      value={teamDraft}
-                      onChange={(event) => {
-                        setParticipantTeamDrafts((current) => ({
-                          ...current,
-                          [participant.participantId]: event.target.value,
-                        }));
-                      }}
-                      disabled={!isLobby || isTeamUpdating}
-                    >
-                      <option value="">Выберите команду</option>
-                      {session.teams.map((team) => (
-                        <option key={team.teamId} value={team.teamId}>
-                          {team.teamName}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <button
-                    type="button"
-                    className="secondary-button compact-button"
-                    onClick={() => {
-                      void handleAssignTeam(participant.participantId);
-                    }}
-                    disabled={!isLobby || isTeamUpdating || !teamDraft}
-                  >
-                    {isTeamUpdating ? 'Назначение...' : 'Назначить команду'}
-                  </button>
-                </div>
-
-                <div className="participant-role-form">
-                  <label className="field compact-field">
-                    <span>Выбор роли</span>
-                    <select
-                      value={roleDraft.selectedRole}
-                      onChange={(event) => {
-                        updateManualRoleDraft(
-                          participant.participantId,
-                          'selectedRole',
-                          event.target.value,
-                        );
-                      }}
-                      disabled={!isLobby || isParticipantUpdating || !hasTeam}
-                    >
-                      <option value="">Выберите роль</option>
-                      {commonGameRoles.map((role) => (
-                        <option key={role} value={role}>
-                          {role}
-                        </option>
-                      ))}
-                      <option value={customGameRoleOption}>Своя роль</option>
-                    </select>
-                  </label>
-
-                  {roleDraft.selectedRole === customGameRoleOption ? (
-                    <label className="field compact-field">
-                      <span>Название роли</span>
-                      <input
-                        type="text"
-                        value={roleDraft.customRole}
-                        placeholder="Например, Старшая медсестра"
-                        onChange={(event) => {
-                          updateManualRoleDraft(
-                            participant.participantId,
-                            'customRole',
-                            event.target.value,
-                          );
-                        }}
-                        disabled={!isLobby || isParticipantUpdating || !hasTeam}
-                      />
-                    </label>
-                  ) : null}
-
-                  <button
-                    type="button"
-                    className="primary-button compact-button"
-                    onClick={() => {
-                      void onAssignManualRole(
-                        session.sessionCode,
-                        participant.participantId,
-                        resolvedRole,
-                      );
-                    }}
-                    disabled={!isLobby || isParticipantUpdating || !resolvedRole || !hasTeam}
-                  >
-                    {isParticipantUpdating ? 'Назначение...' : 'Назначить роль'}
-                  </button>
-                </div>
-
-                {!hasTeam ? (
-                  <p className="participant-team-warning">
-                    Сначала выберите команду для участника, после этого станет доступно назначение игровой роли.
-                  </p>
-                ) : null}
-              </article>
-            );
-          })}
-        </div>
-      </CollapsibleSection>
     </div>
   );
 }

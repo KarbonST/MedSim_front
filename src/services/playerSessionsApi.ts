@@ -1,5 +1,6 @@
 import type {
   AvailablePlayerSession,
+  PlayerKanbanCardUpdateRequest,
   PlayerSession,
   PlayerSessionJoinRequest,
   PlayerTeamWorkspace,
@@ -87,6 +88,36 @@ export async function fetchPlayerTeamWorkspace(
     const fallbackMessage = response.status === 404
       ? 'Сессия или участник больше не найдены. Подключитесь заново.'
       : 'Не удалось загрузить командный экран. Попробуйте ещё раз.';
+
+    throw new Error(await parseErrorMessage(response, fallbackMessage));
+  }
+
+  return response.json() as Promise<PlayerTeamWorkspace>;
+}
+
+export async function updatePlayerKanbanCardStatus(
+  sessionCode: string,
+  participantId: number,
+  cardId: number,
+  payload: PlayerKanbanCardUpdateRequest,
+): Promise<PlayerTeamWorkspace> {
+  const response = await fetch(
+    `${API_PREFIX}/player-sessions/${encodeURIComponent(sessionCode)}/participants/${participantId}/kanban/cards/${cardId}/status`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (!response.ok) {
+    const fallbackMessage = response.status === 409
+      ? 'Канбан-доска доступна только на этапах с канбаном.'
+      : response.status === 404
+        ? 'Карточка больше не найдена. Обновите командный экран.'
+        : 'Не удалось обновить карточку. Попробуйте ещё раз.';
 
     throw new Error(await parseErrorMessage(response, fallbackMessage));
   }

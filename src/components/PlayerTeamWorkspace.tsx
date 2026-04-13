@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { PlayerTeamWorkspace } from '../types/app';
+import type { PlayerKanbanCardUpdateRequest, PlayerTeamWorkspace } from '../types/app';
 import BrandHeader from './BrandHeader';
 import { getSessionStatusLabel } from '../constants/sessionStatuses';
 import { formatRuntimeDuration, getInteractionModeLabel, getRuntimeRemainingSeconds, getTimerStatusLabel } from '../lib/sessionRuntime';
@@ -7,11 +7,14 @@ import CollapsibleSection from './CollapsibleSection';
 import TeamChatFeed from './TeamChatFeed';
 import { usePlayerTeamChat } from '../hooks/usePlayerTeamChat';
 import ChiefDoctorHospitalPlan from './ChiefDoctorHospitalPlan';
+import TeamKanbanBoard from './TeamKanbanBoard';
 
 interface PlayerTeamWorkspaceProps {
   workspace: PlayerTeamWorkspace;
   loading: boolean;
   refreshError: string;
+  kanbanActionId: number | null;
+  onUpdateKanbanCardStatus: (cardId: number, payload: PlayerKanbanCardUpdateRequest) => Promise<void>;
   onReset: () => void;
 }
 
@@ -19,10 +22,15 @@ function PlayerTeamWorkspaceScreen({
   workspace,
   loading,
   refreshError,
+  kanbanActionId,
+  onUpdateKanbanCardStatus,
   onReset,
 }: PlayerTeamWorkspaceProps) {
   const isFinished = workspace.sessionStatus === 'FINISHED';
   const hasTeam = workspace.teamId !== null;
+  const kanbanAvailable = workspace.sessionRuntime.activeStageInteractionMode === 'CHAT_AND_KANBAN';
+  const kanbanNotifications = workspace.kanbanNotifications ?? [];
+  const teamEconomy = workspace.teamEconomy;
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -129,29 +137,149 @@ function PlayerTeamWorkspaceScreen({
           <div className="waiting-note compact-note chief-doctor-plan-note">
             <p>На плане видны кабинеты поликлиники, цвет их состояния и количество проблем в каждом помещении.</p>
           </div>
-          <ChiefDoctorHospitalPlan />
+          <ChiefDoctorHospitalPlan
+            rooms={workspace.teamEconomy?.rooms ?? []}
+          />
         </CollapsibleSection>
       ) : null}
 
-      {hasTeam && workspace.inventoryVisible ? (
+      {hasTeam && teamEconomy ? (
         <CollapsibleSection
-          kicker="Склад команды"
-          title="Доступные предметы"
-          defaultExpanded={false}
-          badge={<span className="status-pill subtle-status-pill">Позиций: {workspace.teamInventory.length}</span>}
+          kicker="Ресурсы"
+          title="Ресурсы команды"
+          defaultExpanded
+          badge={<span className="status-pill subtle-status-pill">Баланс: {Number(teamEconomy.currentBalance).toFixed(2)}</span>}
         >
-          {workspace.teamInventory.length ? (
-            <div className="team-inventory-grid">
-              {workspace.teamInventory.map((item) => (
-                <article key={item.itemName} className="inventory-item-card">
-                  <span className="inventory-item-name">{item.itemName}</span>
-                  <strong className="inventory-item-quantity">{item.quantity} шт.</strong>
+          <div className="team-resources-panel">
+            <div className="team-resources-grid">
+              <article className="info-card team-resource-card">
+                <span>Бюджет</span>
+                <strong>{Number(teamEconomy.currentBalance).toFixed(2)}</strong>
+              </article>
+              <article className="info-card team-resource-card">
+                <span>Время этапа</span>
+                <strong>{teamEconomy.currentStageTimeUnits}</strong>
+              </article>
+              <article className="info-card team-resource-card">
+                <span>Доход / расходы</span>
+                <strong>
+                  {Number(teamEconomy.totalIncome).toFixed(2)} / {Number(teamEconomy.totalExpenses).toFixed(2)}
+                </strong>
+              </article>
+              <article className="info-card team-resource-card">
+                <span>Штрафы / бонусы</span>
+                <strong>
+                  {Number(teamEconomy.totalPenalties).toFixed(2)} / {Number(teamEconomy.totalBonuses).toFixed(2)}
+                </strong>
+              </article>
+            </div>
+
+            <div className="team-resources-columns">
+              <div className="team-resource-subpanel">
+                <div className="team-resource-subpanel-header">
+                  <strong>Склад</strong>
+                  <span>{workspace.inventoryVisible ? `Позиций: ${workspace.teamInventory.length}` : 'Ограниченный доступ'}</span>
+                </div>
+                {workspace.inventoryVisible && workspace.teamInventory.length ? (
+                  <div className="team-inventory-grid">
+                    {workspace.teamInventory.map((item) => (
+                      <article key={item.itemName} className="inventory-item-card">
+                        <span className="inventory-item-name">{item.itemName}</span>
+                        <strong className="inventory-item-quantity">{item.quantity} шт.</strong>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="waiting-note compact-note">
+                    <p>
+                      {workspace.inventoryVisible
+                        ? 'Для вашей команды пока не сформирован стартовый набор предметов.'
+                        : 'Детальный склад видят роли с доступом к инвентарю, но бюджет и время доступны всей команде.'}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="team-resource-subpanel">
+                <div className="team-resource-subpanel-header">
+                  <strong>Последние операции</strong>
+                  <span>{teamEconomy.recentEvents.length}</span>
+                </div>
+                {teamEconomy.recentEvents.length ? (
+                  <div className="team-economy-event-list">
+                    {teamEconomy.recentEvents.map((event) => (
+                      <article key={event.eventId} className="team-economy-event-card">
+                        <div>
+                          <strong>{event.message}</strong>
+                          <time>{formatWorkspaceTimestamp(event.createdAt)}</time>
+                        </div>
+                        <span>
+                          Бюджет {formatSignedNumber(event.amountDelta)} · время {formatSignedInteger(event.timeDelta)}
+                          {event.itemName ? ` · ${event.itemName} ${formatSignedInteger(event.itemQuantityDelta)} шт.` : ''}
+                        </span>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="waiting-note compact-note">
+                    <p>Операции появятся после взятия задач в работу или завершения этапа ведущим.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </CollapsibleSection>
+      ) : null}
+
+      {hasTeam ? (
+        <CollapsibleSection
+          kicker="Канбан"
+          title="Уведомления"
+          defaultExpanded={kanbanNotifications.length > 0}
+          badge={<span className="status-pill subtle-status-pill">{kanbanNotifications.length}</span>}
+        >
+          {kanbanNotifications.length ? (
+            <div className="kanban-notifications-list">
+              {kanbanNotifications.map((notification) => (
+                <article key={notification.notificationId} className="kanban-notification-card">
+                  <div>
+                    <strong>{notification.title}</strong>
+                    <time>{formatWorkspaceTimestamp(notification.createdAt)}</time>
+                  </div>
+                  <p>{notification.message}</p>
                 </article>
               ))}
             </div>
           ) : (
             <div className="waiting-note compact-note">
-              <p>Для вашей команды пока не сформирован стартовый набор предметов.</p>
+              <p>Пока новых уведомлений по канбану нет. Когда вам назначат задачу или она придёт на согласование, это появится здесь.</p>
+            </div>
+          )}
+        </CollapsibleSection>
+      ) : null}
+
+      {hasTeam ? (
+        <CollapsibleSection
+          kicker="Канбан"
+          title="Доска задач команды"
+          defaultExpanded={kanbanAvailable}
+          badge={<span className="status-pill subtle-status-pill">{kanbanAvailable ? 'Доступна' : 'Ждёт этапа'}</span>}
+        >
+          {kanbanAvailable ? (
+            <TeamKanbanBoard
+              board={workspace.teamKanbanBoard}
+              updatingCardId={kanbanActionId}
+              onUpdateCardStatus={onUpdateKanbanCardStatus}
+              currentParticipantId={workspace.participantId}
+              currentGameRole={workspace.gameRole}
+              teamMembers={workspace.teammates}
+            />
+          ) : (
+            <div className="waiting-note compact-note">
+              <p>
+                Канбан-доска откроется на этапе с режимом «чат + канбан». Сейчас можно обсуждать проблемы в чате и смотреть
+                состояние поликлиники.
+              </p>
             </div>
           )}
         </CollapsibleSection>
@@ -296,6 +424,32 @@ function PlayerTeamWorkspaceScreen({
       </button>
     </section>
   );
+}
+
+function formatWorkspaceTimestamp(value: string): string {
+  return value.replace('T', ' ').slice(0, 16);
+}
+
+function formatSignedNumber(value: number): string {
+  const numberValue = Number(value);
+
+  if (numberValue > 0) {
+    return `+${numberValue.toFixed(2)}`;
+  }
+
+  if (numberValue < 0) {
+    return numberValue.toFixed(2);
+  }
+
+  return '0';
+}
+
+function formatSignedInteger(value: number): string {
+  if (value > 0) {
+    return `+${value}`;
+  }
+
+  return `${value}`;
 }
 
 export default PlayerTeamWorkspaceScreen;

@@ -1,19 +1,34 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { GameSessionParticipantsResponse, SessionParticipantSummary } from '../types/app';
+import type {
+  GameSessionEconomyResponse,
+  GameSessionKanbanResponse,
+  GameSessionParticipantsResponse,
+  SessionParticipantSummary,
+} from '../types/app';
 import { getSessionStatusLabel } from '../constants/sessionStatuses';
 import CollapsibleSection from './CollapsibleSection';
 import TeamChatFeed from './TeamChatFeed';
 import { useFacilitatorTeamChats } from '../hooks/useFacilitatorTeamChats';
+import ChiefDoctorHospitalPlan from './ChiefDoctorHospitalPlan';
+import TeamKanbanBoard from './TeamKanbanBoard';
 
 interface FacilitatorLiveDashboardProps {
   session: GameSessionParticipantsResponse;
   loading: boolean;
   authHeader: string;
+  economyOverview: GameSessionEconomyResponse | null;
+  kanbanOverview: GameSessionKanbanResponse | null;
 }
 
 const leadershipRoles = new Set(['Главный врач', 'Главная медсестра', 'Главный инженер']);
 
-function FacilitatorLiveDashboard({ session, loading, authHeader }: FacilitatorLiveDashboardProps) {
+function FacilitatorLiveDashboard({
+  session,
+  loading,
+  authHeader,
+  economyOverview,
+  kanbanOverview,
+}: FacilitatorLiveDashboardProps) {
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(session.teams[0]?.teamId ?? null);
 
   useEffect(() => {
@@ -44,6 +59,12 @@ function FacilitatorLiveDashboard({ session, loading, authHeader }: FacilitatorL
 
   const selectedTeam = session.teams.find((team) => team.teamId === selectedTeamId) ?? session.teams[0] ?? null;
   const selectedTeamParticipants = selectedTeam ? (teamParticipantsMap[selectedTeam.teamId] ?? []) : [];
+  const selectedTeamEconomy = selectedTeam
+    ? economyOverview?.teams.find((team) => team.teamId === selectedTeam.teamId) ?? null
+    : null;
+  const selectedTeamKanbanBoard = selectedTeam
+    ? kanbanOverview?.teams.find((team) => team.teamId === selectedTeam.teamId)?.teamKanbanBoard ?? null
+    : null;
 
   return (
     <div className="session-setup-stack facilitator-live-stack">
@@ -156,6 +177,35 @@ function FacilitatorLiveDashboard({ session, loading, authHeader }: FacilitatorL
               <strong>{selectedTeam.teamName}</strong>
             </article>
           </div>
+
+          <CollapsibleSection
+            kicker="План команды"
+            title="Кабинеты и проблемы"
+            className="facilitator-live-nested-panel"
+            defaultExpanded
+            badge={<span className="status-pill subtle-status-pill">{selectedTeamEconomy ? 'Доступен' : 'Загрузка...'}</span>}
+          >
+            <div className="waiting-note compact-note chief-doctor-plan-note">
+              <p>План показывает состояние выбранной команды: кабинеты, активные проблемы и статусы задач.</p>
+            </div>
+            <ChiefDoctorHospitalPlan
+              rooms={selectedTeamEconomy?.rooms ?? []}
+              emptyText="Данные плана выбранной команды загружаются или ещё не подготовлены."
+            />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            kicker="Канбан команды"
+            title="Доска задач"
+            className="facilitator-live-nested-panel"
+            defaultExpanded={false}
+            badge={<span className="status-pill subtle-status-pill">{selectedTeamKanbanBoard ? 'Просмотр' : 'Загрузка...'}</span>}
+          >
+            <div className="waiting-note compact-note">
+              <p>Ведущий видит состояние доски выбранной команды без изменения карточек.</p>
+            </div>
+            <TeamKanbanBoard board={selectedTeamKanbanBoard} readOnly />
+          </CollapsibleSection>
 
           <div className="participants-list role-management-list workspace-members-list">
             {selectedTeamParticipants.map((participant, index) => (

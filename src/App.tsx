@@ -25,6 +25,7 @@ import {
   createGameSession,
   deleteGameSession,
   fetchGameSessionEconomy,
+  fetchGameSessionKanban,
   finishGameSession,
   pauseGameSession,
   pauseGameSessionTimer,
@@ -37,11 +38,14 @@ import {
   startGameSession,
   startGameSessionTimer,
 } from './services/gameSessionsApi';
-import { fetchPlayerTeamWorkspace } from './services/playerSessionsApi';
+import { fetchPlayerTeamWorkspace, updatePlayerKanbanCardStatus } from './services/playerSessionsApi';
 import { createBasicAuthHeader, fetchStaffProfile } from './services/staffAuthApi';
 import type {
   GameSessionStageSettingsRequest,
+  GameSessionEconomyResponse,
+  GameSessionKanbanResponse,
   Mode,
+  PlayerKanbanCardUpdateRequest,
   PlayerFormState,
   PlayerWorkspaceState,
   SessionEconomySettings,
@@ -78,6 +82,8 @@ function App() {
   const [facilitatorActionError, setFacilitatorActionError] = useState('');
   const [facilitatorSetupLoading, setFacilitatorSetupLoading] = useState(false);
   const [facilitatorEconomySettings, setFacilitatorEconomySettings] = useState<SessionEconomySettings | null>(null);
+  const [facilitatorEconomyOverview, setFacilitatorEconomyOverview] = useState<GameSessionEconomyResponse | null>(null);
+  const [facilitatorKanbanOverview, setFacilitatorKanbanOverview] = useState<GameSessionKanbanResponse | null>(null);
   const [facilitatorEconomyLoading, setFacilitatorEconomyLoading] = useState(false);
   const [facilitatorEconomySaving, setFacilitatorEconomySaving] = useState(false);
   const [facilitatorAutoTeamLoading, setFacilitatorAutoTeamLoading] = useState(false);
@@ -93,6 +99,7 @@ function App() {
   const [playerWorkspaceState, setPlayerWorkspaceState] = useState<PlayerWorkspaceState>(
     initialPlayerWorkspaceState,
   );
+  const [playerKanbanActionId, setPlayerKanbanActionId] = useState<number | null>(null);
   const { joinState, joinSession, resetSession } = usePlayerSession(
     persistedState.playerSession,
   );
@@ -208,6 +215,7 @@ function App() {
     void Promise.all([
       loadSession(facilitatorSessionCode, staffAuthHeader),
       loadEconomySettings(facilitatorSessionCode, staffAuthHeader),
+      loadKanbanOverview(facilitatorSessionCode, staffAuthHeader),
     ]);
   }, [isFacilitatorWorkspaceOpen, staffAuthHeader, facilitatorSessionCode]);
 
@@ -226,6 +234,8 @@ function App() {
       void Promise.all([
         loadSession(facilitatorSessionCode, staffAuthHeader),
         loadSessions(staffAuthHeader),
+        loadEconomySettings(facilitatorSessionCode, staffAuthHeader, { silent: true }),
+        loadKanbanOverview(facilitatorSessionCode, staffAuthHeader, { silent: true }),
       ]);
     }, 5000);
 
@@ -267,6 +277,8 @@ function App() {
         setIsFacilitatorWorkspaceOpen(false);
         setFacilitatorSessionCode('');
         setFacilitatorEconomySettings(null);
+        setFacilitatorEconomyOverview(null);
+        setFacilitatorKanbanOverview(null);
         resetOverview();
         resetSessions();
       }
@@ -340,16 +352,36 @@ function App() {
     try {
       const payload = await fetchGameSessionEconomy(sessionCode, authHeader);
       setFacilitatorEconomySettings(payload.settings);
+      setFacilitatorEconomyOverview(payload);
     } catch (error) {
       setFacilitatorActionError(
         error instanceof Error ? error.message : 'Не удалось загрузить стартовые ресурсы команд.',
       );
       if (!options?.silent) {
         setFacilitatorEconomySettings(null);
+        setFacilitatorEconomyOverview(null);
       }
     } finally {
       if (!options?.silent) {
         setFacilitatorEconomyLoading(false);
+      }
+    }
+  };
+
+  const loadKanbanOverview = async (
+    sessionCode: string,
+    authHeader: string,
+    options?: { silent?: boolean },
+  ): Promise<void> => {
+    try {
+      const payload = await fetchGameSessionKanban(sessionCode, authHeader);
+      setFacilitatorKanbanOverview(payload);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось загрузить канбан-доски команд.',
+      );
+      if (!options?.silent) {
+        setFacilitatorKanbanOverview(null);
       }
     }
   };
@@ -374,6 +406,7 @@ function App() {
       loadSessions(staffAuthHeader),
       loadSession(sessionCode, staffAuthHeader),
       loadEconomySettings(sessionCode, staffAuthHeader, { silent: true }),
+      loadKanbanOverview(sessionCode, staffAuthHeader, { silent: true }),
       loadAvailableSessions(),
     ]);
   };
@@ -408,6 +441,7 @@ function App() {
         loadSessions(staffAuthHeader),
         loadSession(createdSession.sessionCode, staffAuthHeader),
         loadEconomySettings(createdSession.sessionCode, staffAuthHeader),
+        loadKanbanOverview(createdSession.sessionCode, staffAuthHeader),
         loadAvailableSessions(),
       ]);
       return true;
@@ -432,6 +466,7 @@ function App() {
     await Promise.all([
       loadSession(sessionCode, staffAuthHeader),
       loadEconomySettings(sessionCode, staffAuthHeader),
+      loadKanbanOverview(sessionCode, staffAuthHeader),
     ]);
   };
 
@@ -458,6 +493,7 @@ function App() {
         staffAuthHeader,
       );
       setFacilitatorEconomySettings(payload.settings);
+      setFacilitatorEconomyOverview(payload);
       await syncAfterSessionMutation(sessionCode);
     } catch (error) {
       setFacilitatorActionError(
@@ -543,7 +579,7 @@ function App() {
   const handleAssignParticipantTeam = async (
     sessionCode: string,
     participantId: number,
-    teamId: number,
+    teamId: number | null,
   ): Promise<void> => {
     if (!staffAuthHeader) {
       setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
@@ -830,6 +866,8 @@ function App() {
       ) {
         setFacilitatorSessionCode('');
         setFacilitatorEconomySettings(null);
+        setFacilitatorEconomyOverview(null);
+        setFacilitatorKanbanOverview(null);
         resetOverview();
       }
     } catch (error) {
@@ -843,9 +881,49 @@ function App() {
 
   const handleResetPlayerFlow = (): void => {
     setPlayerWorkspaceState(initialPlayerWorkspaceState);
+    setPlayerKanbanActionId(null);
     resetSession();
     setPlayerForm((current) => ({ ...current, sessionCode: '' }));
     void loadAvailableSessions();
+  };
+
+  const handleUpdatePlayerKanbanCardStatus = async (
+    cardId: number,
+    payload: PlayerKanbanCardUpdateRequest,
+  ): Promise<void> => {
+    const workspace = playerWorkspaceState.workspace;
+
+    if (!workspace) {
+      return;
+    }
+
+    setPlayerKanbanActionId(cardId);
+    setPlayerWorkspaceState((current) => ({
+      ...current,
+      error: '',
+    }));
+
+    try {
+      const workspacePayload = await updatePlayerKanbanCardStatus(
+        workspace.sessionCode,
+        workspace.participantId,
+        cardId,
+        payload,
+      );
+
+      setPlayerWorkspaceState({
+        loading: false,
+        error: '',
+        workspace: workspacePayload,
+      });
+    } catch (error) {
+      setPlayerWorkspaceState((current) => ({
+        ...current,
+        error: error instanceof Error ? error.message : 'Не удалось обновить карточку канбан-доски.',
+      }));
+    } finally {
+      setPlayerKanbanActionId(null);
+    }
   };
 
   const handleCloseFacilitatorWorkspace = (): void => {
@@ -858,6 +936,8 @@ function App() {
     setFacilitatorEconomyLoading(false);
     setFacilitatorEconomySaving(false);
     setFacilitatorEconomySettings(null);
+    setFacilitatorEconomyOverview(null);
+    setFacilitatorKanbanOverview(null);
     setFacilitatorAutoTeamLoading(false);
     setFacilitatorRandomRoleLoading(false);
     setFacilitatorRoleParticipantId(null);
@@ -893,6 +973,8 @@ function App() {
               workspace={playerWorkspaceState.workspace}
               loading={playerWorkspaceState.loading}
               refreshError={playerWorkspaceState.error}
+              kanbanActionId={playerKanbanActionId}
+              onUpdateKanbanCardStatus={handleUpdatePlayerKanbanCardStatus}
               onReset={handleResetPlayerFlow}
             />
           ) : (
@@ -918,6 +1000,8 @@ function App() {
             actionSessionCode={facilitatorActionCode}
             setupLoading={facilitatorSetupLoading}
             economySettings={facilitatorEconomySettings}
+            economyOverview={facilitatorEconomyOverview}
+            kanbanOverview={facilitatorKanbanOverview}
             economyLoading={facilitatorEconomyLoading}
             economySaving={facilitatorEconomySaving}
             randomAssignmentLoading={facilitatorRandomRoleLoading}

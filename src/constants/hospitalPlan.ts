@@ -1,9 +1,9 @@
-export interface HospitalPlanRoom {
+import type { ProblemSeverity } from '../types/app';
+
+export interface HospitalPlanRoomLayout {
   id: string;
-  name: string;
-  problemCount: number;
-  income: number;
-  problems: string[];
+  roomCode: string;
+  fallbackName: string;
   x: number;
   y: number;
   width: number;
@@ -12,17 +12,11 @@ export interface HospitalPlanRoom {
   labelLines?: string[];
 }
 
-export const hospitalPlanRooms: HospitalPlanRoom[] = [
+export const hospitalPlanRoomLayouts: HospitalPlanRoomLayout[] = [
   {
     id: 'xray',
-    name: 'Рентген',
-    problemCount: 3,
-    income: 3,
-    problems: [
-      'Водяные разводы на потолке',
-      'Деффект аппарата (искрение)',
-      'Испорченные свинцовые накидки',
-    ],
+    roomCode: 'XRAY',
+    fallbackName: 'Рентген',
     x: 28,
     y: 24,
     width: 244,
@@ -31,17 +25,8 @@ export const hospitalPlanRooms: HospitalPlanRoom[] = [
   },
   {
     id: 'ultrasound',
-    name: 'УЗИ',
-    problemCount: 6,
-    income: 2.5,
-    problems: [
-      'Сломанные рольставни на окнах',
-      'Неправильные ведра для отходов',
-      'Трещины на поверхностях',
-      'Надорваны кушетки',
-      'Нестабильная работа ламп',
-      'Мятые, грязные или надорванные простыни',
-    ],
+    roomCode: 'ULTRASOUND',
+    fallbackName: 'УЗИ',
     x: 32,
     y: 122,
     width: 84,
@@ -51,15 +36,8 @@ export const hospitalPlanRooms: HospitalPlanRoom[] = [
   },
   {
     id: 'mri',
-    name: 'МРТ',
-    problemCount: 4,
-    income: 3,
-    problems: [
-      'Инвалидная коляска создаёт помехи',
-      'Водяные разводы на потолке над оборудованием',
-      'Электронные устройства вызывают помехи',
-      'Катушка лежит прямо на аппарате',
-    ],
+    roomCode: 'MRI',
+    fallbackName: 'МРТ',
     x: 184,
     y: 122,
     width: 84,
@@ -69,14 +47,8 @@ export const hospitalPlanRooms: HospitalPlanRoom[] = [
   },
   {
     id: 'exam-1',
-    name: 'Смотровая №1',
-    problemCount: 3,
-    income: 1.5,
-    problems: [
-      'Лекарства просрочены или отсутствуют',
-      'Градусник без футляра',
-      'Ведра без маркировок',
-    ],
+    roomCode: 'EXAM_1',
+    fallbackName: 'Смотровая №1',
     x: 32,
     y: 286,
     width: 84,
@@ -86,15 +58,8 @@ export const hospitalPlanRooms: HospitalPlanRoom[] = [
   },
   {
     id: 'exam-2',
-    name: 'Смотровая №2',
-    problemCount: 4,
-    income: 1.5,
-    problems: [
-      'Лампы не работают',
-      'Искрится УФ-лампа',
-      'Закончились перчатки',
-      'Нерабочий ПК врача, синий экран',
-    ],
+    roomCode: 'EXAM_2',
+    fallbackName: 'Смотровая №2',
     x: 184,
     y: 286,
     width: 84,
@@ -104,15 +69,8 @@ export const hospitalPlanRooms: HospitalPlanRoom[] = [
   },
   {
     id: 'procedure',
-    name: 'Процедурная',
-    problemCount: 4,
-    income: 2.5,
-    problems: [
-      'Хлам на полу',
-      'Трещина в стене',
-      'Личные вещи лежат рядом с перевязочными материалами',
-      'Нужна повторная санитарная проверка помещения',
-    ],
+    roomCode: 'PROCEDURE',
+    fallbackName: 'Процедурная',
     x: 32,
     y: 404,
     width: 84,
@@ -122,15 +80,8 @@ export const hospitalPlanRooms: HospitalPlanRoom[] = [
   },
   {
     id: 'gynecology',
-    name: 'Гинекология',
-    problemCount: 4,
-    income: 2.5,
-    problems: [
-      'Ведра для отходов без крышки',
-      'Сломана сидушка стула или отсутствует спинка',
-      'Сломанный кран, нет горячей воды',
-      'Закончился антисептик',
-    ],
+    roomCode: 'GYNECOLOGY',
+    fallbackName: 'Гинекология',
     x: 184,
     y: 404,
     width: 84,
@@ -140,15 +91,8 @@ export const hospitalPlanRooms: HospitalPlanRoom[] = [
   },
   {
     id: 'toilet-w',
-    name: 'Туалет женский',
-    problemCount: 4,
-    income: 1,
-    problems: [
-      'Отсутствует туалетная бумага',
-      'Протекает раковина',
-      'Сломанный кран, нет горячей воды',
-      'Замечена мышь или крыса',
-    ],
+    roomCode: 'WOMEN_TOILET',
+    fallbackName: 'Туалет женский',
     x: 32,
     y: 522,
     width: 84,
@@ -157,13 +101,8 @@ export const hospitalPlanRooms: HospitalPlanRoom[] = [
   },
   {
     id: 'toilet-m',
-    name: 'Туалет мужской',
-    problemCount: 2,
-    income: 1,
-    problems: [
-      'Отсутствует мыло',
-      'Протекает унитаз',
-    ],
+    roomCode: 'MEN_TOILET',
+    fallbackName: 'Туалет мужской',
     x: 184,
     y: 522,
     width: 84,
@@ -172,14 +111,8 @@ export const hospitalPlanRooms: HospitalPlanRoom[] = [
   },
   {
     id: 'registry',
-    name: 'Регистратура',
-    problemCount: 3,
-    income: 2,
-    problems: [
-      'Регистратор не работает',
-      'Отсутствует план пожарной безопасности',
-      'Отсутствует рециркулятор',
-    ],
+    roomCode: 'REGISTRY_HALL',
+    fallbackName: 'Регистратура',
     x: 28,
     y: 600,
     width: 244,
@@ -188,14 +121,8 @@ export const hospitalPlanRooms: HospitalPlanRoom[] = [
   },
   {
     id: 'hall',
-    name: 'Коридор',
-    problemCount: 3,
-    income: 2,
-    problems: [
-      'Регистратор не работает',
-      'Отсутствует план пожарной безопасности',
-      'Отсутствует рециркулятор',
-    ],
+    roomCode: 'REGISTRY_HALL',
+    fallbackName: 'Коридор',
     x: 120,
     y: 122,
     width: 60,
@@ -205,7 +132,18 @@ export const hospitalPlanRooms: HospitalPlanRoom[] = [
   },
 ];
 
-export function getHospitalRoomState(problemCount: number): 'normal' | 'warning' | 'critical' {
+export function getHospitalRoomState(
+  problemCount: number,
+  worstProblemSeverity?: ProblemSeverity | null,
+): 'normal' | 'warning' | 'critical' {
+  if (worstProblemSeverity === 'CRITICAL') {
+    return 'critical';
+  }
+
+  if (worstProblemSeverity === 'SERIOUS') {
+    return 'warning';
+  }
+
   if (problemCount >= 5) {
     return 'critical';
   }

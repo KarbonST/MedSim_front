@@ -2,6 +2,7 @@ import type {
   GameSessionCreateRequest,
   GameSessionEconomyResponse,
   GameSessionEconomySettingsUpdateRequest,
+  GameSessionKanbanResponse,
   GameSessionParticipantsResponse,
   GameSessionRenameRequest,
   GameSessionRoleAssignmentRequest,
@@ -15,6 +16,7 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 const API_PREFIX = `${API_BASE_URL}/api`;
+const GENERIC_HTTP_MESSAGES = new Set(['Bad Request', 'Unauthorized', 'Forbidden', 'Not Found', 'Conflict']);
 
 function createAuthorizedHeaders(authHeader: string, init?: HeadersInit): HeadersInit {
   return {
@@ -33,13 +35,19 @@ async function parseApiError(response: Response, fallbackMessage: string): Promi
 
     const message = payload?.detail ?? payload?.message ?? payload?.error ?? payload?.title;
 
-    if (message) {
+    if (message && !GENERIC_HTTP_MESSAGES.has(message.trim())) {
       return message;
     }
   }
 
   const text = await response.text().catch(() => '');
-  return text.trim() || fallbackMessage;
+  const normalizedText = text.trim();
+
+  if (normalizedText && !GENERIC_HTTP_MESSAGES.has(normalizedText)) {
+    return normalizedText;
+  }
+
+  return fallbackMessage;
 }
 
 export async function fetchGameSessions(authHeader: string): Promise<GameSessionSummary[]> {
@@ -202,6 +210,33 @@ export async function fetchGameSessionEconomy(
   return response.json() as Promise<GameSessionEconomyResponse>;
 }
 
+export async function fetchGameSessionKanban(
+  sessionCode: string,
+  authHeader: string,
+): Promise<GameSessionKanbanResponse> {
+  const response = await fetch(
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/kanban`,
+    {
+      headers: createAuthorizedHeaders(authHeader),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 404
+          ? 'Канбан-доски этой сессии пока не найдены.'
+          : response.status === 401
+            ? 'Нужно заново войти под учётной записью ведущего.'
+            : 'Не удалось загрузить канбан-доски команд. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionKanbanResponse>;
+}
+
 export async function updateGameSessionEconomySettings(
   sessionCode: string,
   request: GameSessionEconomySettingsUpdateRequest,
@@ -337,7 +372,9 @@ export async function assignRandomGameRoles(
         response,
         response.status === 401
           ? 'Нужно заново войти под учётной записью ведущего.'
-          : 'Не удалось автоматически назначить роли. Попробуйте ещё раз.',
+          : response.status === 409
+            ? 'Не удалось автоматически назначить роли. Проверьте, что в каждой команде минимум 3 участника.'
+            : 'Не удалось автоматически назначить роли. Попробуйте ещё раз.',
       ),
     );
   }
