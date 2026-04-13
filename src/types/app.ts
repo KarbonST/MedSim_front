@@ -64,7 +64,7 @@ export interface PlayerTeamWorkspaceMember {
   currentParticipant: boolean;
 }
 
-export type StageInteractionMode = 'CHAT_ONLY' | 'CHAT_WITH_PROBLEMS' | 'CHAT_AND_KANBAN';
+export type StageInteractionMode = 'CHAT_WITH_PROBLEMS' | 'CHAT_AND_KANBAN';
 export type SessionTimerStatus = 'STOPPED' | 'RUNNING' | 'PAUSED';
 export type ProblemSeverity = 'MINOR' | 'SERIOUS' | 'CRITICAL';
 export type TeamProblemStatus = 'ACTIVE' | 'IN_PROGRESS' | 'RESOLVED' | 'IGNORED';

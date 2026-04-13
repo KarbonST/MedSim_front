@@ -8,11 +8,6 @@ export interface StageInteractionModeOption {
 
 export const stageInteractionModes: StageInteractionModeOption[] = [
   {
-    value: 'CHAT_ONLY',
-    label: 'Только чат',
-    hint: 'Игроки общаются без задач, доски и экономического пересчёта этапа.',
-  },
-  {
     value: 'CHAT_WITH_PROBLEMS',
     label: 'Чат с проблемами',
     hint: 'Проблемы доступны и влияют на экономику, но вместо доски игроки работают через плоский список и чат.',

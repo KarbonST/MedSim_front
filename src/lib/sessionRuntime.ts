@@ -41,10 +41,6 @@ export function getInteractionModeLabel(interactionMode: SessionRuntime['activeS
     return 'Чат с проблемами';
   }
 
-  if (interactionMode === 'CHAT_ONLY') {
-    return 'Только чат';
-  }
-
   return 'Пока не выбрано';
 }
 

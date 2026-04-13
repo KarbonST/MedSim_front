@@ -300,7 +300,7 @@ function PlayerTeamWorkspaceScreen({
           ) : (
             <div className="waiting-note compact-note">
               <p>
-                Задачи откроются на этапе с проблемами. Сейчас можно обсуждать вводные в чате и готовиться к работе команды.
+                Ведущий ещё не выбрал активный этап. Когда этап стартует, проблемы появятся в режиме чат-раунда или канбана.
               </p>
             </div>
           )}
@@ -459,7 +459,7 @@ function getInteractionModeDescription(interactionMode: PlayerTeamWorkspace['ses
     return 'На этапе доступны чат и канбан-доска команды.';
   }
 
-  return 'На этапе доступен только командный чат.';
+  return 'Этап пока не выбран.';
 }
 
 function formatSignedNumber(value: number): string {
