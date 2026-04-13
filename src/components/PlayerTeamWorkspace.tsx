@@ -394,11 +394,7 @@ function PlayerTeamWorkspaceScreen({
 
                   <dl className="participant-details">
                     <div>
-                      <dt>Реальная должность</dt>
-                      <dd>{member.hospitalPosition}</dd>
-                    </div>
-                    <div>
-                      <dt>Игровая роль</dt>
+                      <dt>Игровая должность</dt>
                       <dd>{member.gameRole ?? 'Назначается ведущим'}</dd>
                     </div>
                   </dl>
