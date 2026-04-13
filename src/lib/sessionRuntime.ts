@@ -37,6 +37,10 @@ export function getInteractionModeLabel(interactionMode: SessionRuntime['activeS
     return 'Чат и канбан';
   }
 
+  if (interactionMode === 'CHAT_WITH_PROBLEMS') {
+    return 'Чат с проблемами';
+  }
+
   if (interactionMode === 'CHAT_ONLY') {
     return 'Только чат';
   }

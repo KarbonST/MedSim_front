@@ -69,7 +69,7 @@ function createDefaultStages(count: number): SessionStageSetting[] {
   return Array.from({ length: count }, (_, index) => ({
     stageNumber: index + 1,
     durationMinutes: 15,
-    interactionMode: index === 0 ? 'CHAT_ONLY' : 'CHAT_AND_KANBAN',
+    interactionMode: index === 0 ? 'CHAT_WITH_PROBLEMS' : 'CHAT_AND_KANBAN',
   }));
 }
 

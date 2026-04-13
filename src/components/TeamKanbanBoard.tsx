@@ -17,6 +17,7 @@ interface TeamKanbanBoardProps {
   currentGameRole?: string | null;
   teamMembers?: PlayerTeamWorkspaceMember[];
   readOnly?: boolean;
+  variant?: 'board' | 'flat';
 }
 
 interface CardDraft {
@@ -141,6 +142,7 @@ function TeamKanbanBoard({
   currentGameRole = null,
   teamMembers = [],
   readOnly = false,
+  variant = 'board',
 }: TeamKanbanBoardProps) {
   const cards = board?.cards ?? [];
   const [expandedCardIds, setExpandedCardIds] = useState<Set<number>>(() => new Set());
@@ -479,6 +481,111 @@ function TeamKanbanBoard({
       <div className="waiting-note compact-note">
         <p>Карточки канбан-доски пока не подготовлены. Обновите экран или попросите ведущего проверить сессию.</p>
       </div>
+    );
+  }
+
+  if (variant === 'flat') {
+    return (
+      <>
+        <div className="kanban-role-panel kanban-role-panel--flat">
+          <div>
+            <strong>{rolePanel.title}</strong>
+            <p>{rolePanel.description}</p>
+          </div>
+          <div className="kanban-scope-controls">
+            <span>{scopeSummary}</span>
+            {canSwitchCardScope ? (
+              <button
+                type="button"
+                className="secondary-button compact-button"
+                onClick={() => setShowAllCards((current) => !current)}
+              >
+                {showAllCards ? `Показать: ${focusScopeLabel.toLowerCase()}` : 'Показать все проблемы'}
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="team-kanban-flat-list">
+          {visibleCards.map((card) => {
+            const expanded = expandedCardIds.has(card.cardId);
+            const history = card.history ?? [];
+            const responsibleDepartmentLabel = card.responsibleDepartment
+              ? departmentLabels[card.responsibleDepartment]
+              : 'Подразделение не выбрано';
+            const priorityLabel = card.priority ? priorityLabels[card.priority] : 'Приоритет не выбран';
+            const priorityClass = card.priority ? card.priority.toLowerCase() : 'unprioritized';
+
+            return (
+              <article
+                key={card.cardId}
+                className={`kanban-card kanban-card--${priorityClass} chat-problem-card${expanded ? ' kanban-card--expanded' : ''}`}
+              >
+                <button
+                  type="button"
+                  className="kanban-card-summary"
+                  aria-expanded={expanded}
+                  onClick={() => toggleCard(card.cardId)}
+                >
+                  <span className="kanban-card-chevron" aria-hidden="true" />
+                  <span className="kanban-card-room">{card.roomName}</span>
+                  <span className="kanban-card-title">{card.title}</span>
+                  <span className="kanban-card-mini-meta">
+                    <span>Этап {card.stageNumber}</span>
+                    <span>{statusLabels[card.status]}</span>
+                    <span>{priorityLabel}</span>
+                    <span>{responsibleDepartmentLabel}</span>
+                    {card.assigneeName ? <span>{card.assigneeName}</span> : null}
+                  </span>
+                </button>
+
+                {expanded ? (
+                  <div className="kanban-card-details">
+                    <p>
+                      {severityLabels[card.severity]} проблема · кабинет {card.roomCode}. В чат-раунде нет колонок, поэтому
+                      состояние задачи приходится восстанавливать по списку и сообщениям.
+                    </p>
+                    <dl className="kanban-card-facts">
+                      <div>
+                        <dt>Статус</dt>
+                        <dd>{statusLabels[card.status]}</dd>
+                      </div>
+                      <div>
+                        <dt>Подразделение</dt>
+                        <dd>{responsibleDepartmentLabel}</dd>
+                      </div>
+                      <div>
+                        <dt>Исполнитель</dt>
+                        <dd>{card.assigneeName ?? 'Не назначен'}</dd>
+                      </div>
+                      <div>
+                        <dt>Ресурсы</dt>
+                        <dd>{formatCardResources(card)}</dd>
+                      </div>
+                    </dl>
+                    <div className="kanban-card-history">
+                      <h5>Журнал действий</h5>
+                      {history.length ? (
+                        <ol>
+                          {history.map((event) => (
+                            <li key={event.eventId}>
+                              <time>{formatHistoryTimestamp(event.createdAt)}</time>
+                              <span>{event.message}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <p>Пока действий нет. Решения придётся проговаривать и фиксировать вручную через этот список.</p>
+                      )}
+                    </div>
+                    {renderCardActions(card)}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
+        </div>
+      </>
     );
   }
 

@@ -1858,6 +1858,25 @@ button {
   white-space: nowrap;
 }
 
+.kanban-role-panel--flat {
+  background:
+    linear-gradient(135deg, rgba(255, 249, 232, 0.92), rgba(245, 252, 247, 0.82)),
+    radial-gradient(circle at 0% 0%, rgba(192, 141, 67, 0.16), transparent 30%);
+}
+
+.chat-round-note {
+  margin-bottom: 0.9rem;
+}
+
+.team-kanban-flat-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.chat-problem-card {
+  border-style: dashed;
+}
+
 .team-resources-panel {
   display: grid;
   gap: 1rem;

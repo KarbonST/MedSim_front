@@ -29,6 +29,7 @@ function PlayerTeamWorkspaceScreen({
   const isFinished = workspace.sessionStatus === 'FINISHED';
   const hasTeam = workspace.teamId !== null;
   const kanbanAvailable = workspace.sessionRuntime.activeStageInteractionMode === 'CHAT_AND_KANBAN';
+  const chatProblemRoundAvailable = workspace.sessionRuntime.activeStageInteractionMode === 'CHAT_WITH_PROBLEMS';
   const kanbanNotifications = workspace.kanbanNotifications ?? [];
   const teamEconomy = workspace.teamEconomy;
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -260,10 +261,14 @@ function PlayerTeamWorkspaceScreen({
 
       {hasTeam ? (
         <CollapsibleSection
-          kicker="Канбан"
-          title="Доска задач команды"
-          defaultExpanded={kanbanAvailable}
-          badge={<span className="status-pill subtle-status-pill">{kanbanAvailable ? 'Доступна' : 'Ждёт этапа'}</span>}
+          kicker={chatProblemRoundAvailable ? 'Без доски' : 'Канбан'}
+          title={chatProblemRoundAvailable ? 'Проблемы чат-раунда' : 'Доска задач команды'}
+          defaultExpanded={kanbanAvailable || chatProblemRoundAvailable}
+          badge={(
+            <span className="status-pill subtle-status-pill">
+              {kanbanAvailable ? 'Доступна' : chatProblemRoundAvailable ? 'Чат-раунд' : 'Ждёт этапа'}
+            </span>
+          )}
         >
           {kanbanAvailable ? (
             <TeamKanbanBoard
@@ -274,11 +279,28 @@ function PlayerTeamWorkspaceScreen({
               currentGameRole={workspace.gameRole}
               teamMembers={workspace.teammates}
             />
+          ) : chatProblemRoundAvailable ? (
+            <>
+              <div className="waiting-note compact-note chat-round-note">
+                <p>
+                  Это тренировочный раунд без визуальной доски: проблемы уже влияют на экономику, но статусы придётся
+                  держать в голове, в чате и в этом общем списке.
+                </p>
+              </div>
+              <TeamKanbanBoard
+                board={workspace.teamKanbanBoard}
+                updatingCardId={kanbanActionId}
+                onUpdateCardStatus={onUpdateKanbanCardStatus}
+                currentParticipantId={workspace.participantId}
+                currentGameRole={workspace.gameRole}
+                teamMembers={workspace.teammates}
+                variant="flat"
+              />
+            </>
           ) : (
             <div className="waiting-note compact-note">
               <p>
-                Канбан-доска откроется на этапе с режимом «чат + канбан». Сейчас можно обсуждать проблемы в чате и смотреть
-                состояние поликлиники.
+                Задачи откроются на этапе с проблемами. Сейчас можно обсуждать вводные в чате и готовиться к работе команды.
               </p>
             </div>
           )}
@@ -398,9 +420,7 @@ function PlayerTeamWorkspaceScreen({
                     <span className="stage-editor-hint">{stage.durationMinutes} мин.</span>
                   </div>
                   <p className="stage-editor-description">
-                    {stage.interactionMode === 'CHAT_ONLY'
-                      ? 'На этапе доступен только командный чат.'
-                      : 'На этапе доступны чат и канбан-доска команды.'}
+                    {getInteractionModeDescription(stage.interactionMode)}
                   </p>
                 </article>
               ))}
@@ -428,6 +448,18 @@ function PlayerTeamWorkspaceScreen({
 
 function formatWorkspaceTimestamp(value: string): string {
   return value.replace('T', ' ').slice(0, 16);
+}
+
+function getInteractionModeDescription(interactionMode: PlayerTeamWorkspace['sessionRuntime']['activeStageInteractionMode']): string {
+  if (interactionMode === 'CHAT_WITH_PROBLEMS') {
+    return 'Проблемы уже доступны, но доска скрыта: команда работает через чат и общий список.';
+  }
+
+  if (interactionMode === 'CHAT_AND_KANBAN') {
+    return 'На этапе доступны чат и канбан-доска команды.';
+  }
+
+  return 'На этапе доступен только командный чат.';
 }
 
 function formatSignedNumber(value: number): string {
