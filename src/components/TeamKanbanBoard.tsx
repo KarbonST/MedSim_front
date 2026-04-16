@@ -5,7 +5,9 @@ import type {
   KanbanResponsibleDepartment,
   PlayerKanbanCardUpdateRequest,
   PlayerKanbanSolutionSelectionRequest,
+  PlayerTeamInventoryItem,
   PlayerTeamWorkspaceMember,
+  TeamEconomyItem,
   TeamKanbanBoardItem,
   TeamKanbanCardItem,
 } from '../types/app';
@@ -18,6 +20,8 @@ interface TeamKanbanBoardProps {
   currentParticipantId?: number;
   currentGameRole?: string | null;
   teamMembers?: PlayerTeamWorkspaceMember[];
+  teamEconomy?: TeamEconomyItem | null;
+  teamInventory?: PlayerTeamInventoryItem[];
   readOnly?: boolean;
   variant?: 'board' | 'flat';
 }
@@ -144,6 +148,8 @@ function TeamKanbanBoard({
   currentParticipantId,
   currentGameRole = null,
   teamMembers = [],
+  teamEconomy = null,
+  teamInventory = [],
   readOnly = false,
   variant = 'board',
 }: TeamKanbanBoardProps) {
@@ -506,15 +512,67 @@ function TeamKanbanBoard({
         return <p className="kanban-card-action-note">{getWaitingHint(card)}</p>;
       }
 
+      const reviewState = getChiefDoctorReviewState(card, teamEconomy, teamInventory);
+
       return (
         <div className="kanban-card-actions kanban-card-actions--split">
+          <div className={reviewState.canApprove ? 'chief-review-panel' : 'chief-review-panel chief-review-panel--blocked'}>
+            <div className="chief-review-header">
+              <strong>Финальная проверка ресурсов</strong>
+              <span>{reviewState.canApprove ? 'Можно согласовать' : 'Нужно решение'}</span>
+            </div>
+
+            <div className="chief-review-grid">
+              <article>
+                <span>Бюджет сейчас</span>
+                <strong>{reviewState.currentBudget}</strong>
+              </article>
+              <article>
+                <span>Спишется</span>
+                <strong>{reviewState.budgetCost}</strong>
+              </article>
+              <article>
+                <span>Останется</span>
+                <strong>{reviewState.projectedBudget}</strong>
+              </article>
+              <article>
+                <span>Время сейчас</span>
+                <strong>{reviewState.currentTime}</strong>
+              </article>
+              <article>
+                <span>Спишется</span>
+                <strong>{reviewState.timeCost}</strong>
+              </article>
+              <article>
+                <span>Останется</span>
+                <strong>{reviewState.projectedTime}</strong>
+              </article>
+            </div>
+
+            {reviewState.itemLine ? (
+              <p className="chief-review-item-line">{reviewState.itemLine}</p>
+            ) : null}
+
+            {reviewState.blockers.length ? (
+              <div className="chief-review-warning">
+                {reviewState.blockers.map((blocker) => (
+                  <p key={blocker}>{blocker}</p>
+                ))}
+              </div>
+            ) : (
+              <p className="chief-review-note">
+                Списание произойдёт только после финального согласования. Проверка идёт по фактическим ресурсам команды.
+              </p>
+            )}
+          </div>
+
           <button
             type="button"
             className="primary-button compact-button"
             onClick={() => {
               void onUpdateCardStatus(card.cardId, { status: 'DONE' });
             }}
-            disabled={isUpdating}
+            disabled={isUpdating || !reviewState.canApprove}
           >
             {isUpdating ? 'Закрываем...' : 'Финально согласовать'}
           </button>
@@ -898,6 +956,70 @@ function formatSelectedSolution(card: TeamKanbanCardItem): string {
   }
 
   return `${formatReservationState(card)} · ${parts.join(' · ')}`;
+}
+
+function getChiefDoctorReviewState(
+  card: TeamKanbanCardItem,
+  teamEconomy: TeamEconomyItem | null,
+  teamInventory: PlayerTeamInventoryItem[],
+): {
+  currentBudget: string;
+  budgetCost: string;
+  projectedBudget: string;
+  currentTime: string;
+  timeCost: string;
+  projectedTime: string;
+  itemLine: string | null;
+  blockers: string[];
+  canApprove: boolean;
+} {
+  const budgetCost = Number(card.reservedBudgetAmount ?? 0);
+  const timeCost = Number(card.reservedTimeUnits ?? 0);
+  const currentBudget = Number(teamEconomy?.currentBalance ?? 0);
+  const currentTime = Number(teamEconomy?.currentStageTimeUnits ?? 0);
+  const projectedBudget = currentBudget - budgetCost;
+  const projectedTime = currentTime - timeCost;
+  const blockers: string[] = [];
+
+  if (!card.selectedSolutionTitle || card.reservationStatus !== 'RESERVED') {
+    blockers.push('У карточки нет активного резерва: верните задачу или попросите исполнителя выбрать способ решения заново.');
+  }
+
+  if (teamEconomy && projectedBudget < 0) {
+    blockers.push('После согласования бюджет уйдёт в минус. Сначала согласуйте другую задачу иначе или верните эту карточку.');
+  }
+
+  if (teamEconomy && projectedTime < 0) {
+    blockers.push('После согласования время этапа уйдёт в минус. Эту задачу сейчас закрыть нельзя.');
+  }
+
+  let itemLine: string | null = null;
+
+  if (card.reservedItemName && card.reservedItemQuantity > 0) {
+    const inventoryItem = teamInventory.find(
+      (item) => item.itemName.toLowerCase() === card.reservedItemName?.toLowerCase(),
+    );
+    const currentQuantity = inventoryItem?.quantity ?? 0;
+    const projectedQuantity = currentQuantity - card.reservedItemQuantity;
+
+    itemLine = `${card.reservedItemName}: сейчас ${currentQuantity} шт., спишется ${card.reservedItemQuantity} шт., останется ${projectedQuantity} шт.`;
+
+    if (projectedQuantity < 0) {
+      blockers.push(`На складе не хватает предмета: ${card.reservedItemName}.`);
+    }
+  }
+
+  return {
+    currentBudget: teamEconomy ? currentBudget.toFixed(2) : 'нет данных',
+    budgetCost: budgetCost.toFixed(2),
+    projectedBudget: teamEconomy ? projectedBudget.toFixed(2) : 'нет данных',
+    currentTime: teamEconomy ? String(currentTime) : 'нет данных',
+    timeCost: String(timeCost),
+    projectedTime: teamEconomy ? String(projectedTime) : 'нет данных',
+    itemLine,
+    blockers,
+    canApprove: blockers.length === 0,
+  };
 }
 
 function formatHistoryTimestamp(value: string): string {

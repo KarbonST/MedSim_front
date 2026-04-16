@@ -195,7 +195,15 @@ export interface TeamEconomyItem {
   totalBonuses: number;
   reservedItems: TeamEconomyReservedItem[];
   rooms: TeamRoomEconomyItem[];
+  stageSummaries: TeamStageEconomySummaryItem[];
   recentEvents: TeamEconomyEventItem[];
+}
+
+export interface TeamStageEconomySummaryItem {
+  stageNumber: number;
+  netAmount: number;
+  message: string;
+  settledAt: string;
 }
 
 export interface TeamEconomyReservedItem {

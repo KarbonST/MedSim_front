@@ -1927,6 +1927,64 @@ button {
   font-weight: 850;
 }
 
+.team-stage-summary-panel {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(192, 141, 67, 0.22);
+  border-radius: 1.1rem;
+  background:
+    linear-gradient(135deg, rgba(255, 249, 232, 0.92), rgba(255, 255, 255, 0.82)),
+    radial-gradient(circle at 0% 0%, rgba(192, 141, 67, 0.18), transparent 34%);
+}
+
+.team-stage-summary-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.65rem;
+}
+
+.team-stage-summary-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.8rem;
+  border: 1px solid rgba(192, 141, 67, 0.18);
+  border-radius: 0.95rem;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.team-stage-summary-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.team-stage-summary-card-header strong {
+  color: #17382c;
+  font-size: 0.88rem;
+}
+
+.team-stage-summary-card-header span {
+  color: #694c20;
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
+.team-stage-summary-card p {
+  margin: 0;
+  color: #426354;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.team-stage-summary-card time {
+  color: #8a7a5d;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
 .team-reserved-items-note {
   display: grid;
   gap: 0.2rem;
@@ -2225,6 +2283,99 @@ button {
 
 .kanban-card-actions--split {
   grid-template-columns: 1fr;
+}
+
+.chief-review-panel {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.78rem;
+  border: 1px solid rgba(76, 128, 104, 0.22);
+  border-radius: 0.95rem;
+  background:
+    linear-gradient(135deg, rgba(232, 246, 237, 0.9), rgba(255, 255, 255, 0.82)),
+    radial-gradient(circle at 100% 0%, rgba(167, 210, 184, 0.2), transparent 34%);
+}
+
+.chief-review-panel--blocked {
+  border-color: rgba(181, 78, 62, 0.28);
+  background:
+    linear-gradient(135deg, rgba(255, 245, 240, 0.94), rgba(255, 255, 255, 0.82)),
+    radial-gradient(circle at 100% 0%, rgba(181, 78, 62, 0.14), transparent 34%);
+}
+
+.chief-review-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.chief-review-header strong {
+  color: #244737;
+  font-size: 0.82rem;
+}
+
+.chief-review-header span {
+  color: #416352;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.chief-review-panel--blocked .chief-review-header span {
+  color: #8b4b3c;
+}
+
+.chief-review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.chief-review-grid article {
+  display: grid;
+  gap: 0.16rem;
+  padding: 0.55rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.chief-review-grid span {
+  color: #789084;
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.chief-review-grid strong {
+  color: #17382c;
+  font-size: 0.84rem;
+}
+
+.chief-review-item-line,
+.chief-review-note,
+.chief-review-warning p {
+  margin: 0;
+  font-size: 0.78rem !important;
+  font-weight: 800 !important;
+  line-height: 1.35 !important;
+}
+
+.chief-review-item-line,
+.chief-review-note {
+  color: #5f7c70 !important;
+}
+
+.chief-review-warning {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.62rem 0.7rem;
+  border-radius: 0.78rem;
+  background: rgba(255, 235, 228, 0.72);
+}
+
+.chief-review-warning p {
+  color: #8b4b3c !important;
 }
 
 .kanban-solution-panel {

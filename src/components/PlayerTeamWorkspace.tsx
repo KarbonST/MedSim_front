@@ -38,6 +38,7 @@ function PlayerTeamWorkspaceScreen({
   const chatProblemRoundAvailable = workspace.sessionRuntime.activeStageInteractionMode === 'CHAT_WITH_PROBLEMS';
   const kanbanNotifications = workspace.kanbanNotifications ?? [];
   const teamEconomy = workspace.teamEconomy;
+  const stageSummaries = teamEconomy?.stageSummaries ?? [];
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -193,6 +194,31 @@ function PlayerTeamWorkspaceScreen({
               </article>
             </div>
 
+            <div className="team-stage-summary-panel">
+              <div className="team-resource-subpanel-header">
+                <strong>Итоги этапов/раундов</strong>
+                <span>{stageSummaries.length ? `Закрыто: ${stageSummaries.length}` : 'Пока нет итогов'}</span>
+              </div>
+              {stageSummaries.length ? (
+                <div className="team-stage-summary-list">
+                  {stageSummaries.map((summary) => (
+                    <article key={`${summary.stageNumber}-${summary.settledAt}`} className="team-stage-summary-card">
+                      <div className="team-stage-summary-card-header">
+                        <strong>Этап {summary.stageNumber}</strong>
+                        <span>{formatSignedNumber(summary.netAmount)}</span>
+                      </div>
+                      <p>{summary.message}</p>
+                      <time>Зафиксировано: {formatWorkspaceTimestamp(summary.settledAt)}</time>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="waiting-note compact-note">
+                  <p>Итоги появятся здесь после перехода ведущего к следующему этапу или завершения раунда.</p>
+                </div>
+              )}
+            </div>
+
             <div className="team-resources-columns">
               <div className="team-resource-subpanel">
                 <div className="team-resource-subpanel-header">
@@ -307,6 +333,8 @@ function PlayerTeamWorkspaceScreen({
               currentParticipantId={workspace.participantId}
               currentGameRole={workspace.gameRole}
               teamMembers={workspace.teammates}
+              teamEconomy={teamEconomy}
+              teamInventory={workspace.teamInventory}
             />
           ) : chatProblemRoundAvailable ? (
             <>
@@ -324,6 +352,8 @@ function PlayerTeamWorkspaceScreen({
                 currentParticipantId={workspace.participantId}
                 currentGameRole={workspace.gameRole}
                 teamMembers={workspace.teammates}
+                teamEconomy={teamEconomy}
+                teamInventory={workspace.teamInventory}
                 variant="flat"
               />
             </>
