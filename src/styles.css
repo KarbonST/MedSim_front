@@ -2480,6 +2480,77 @@ button {
   background: rgba(255, 255, 255, 0.52);
 }
 
+.kanban-notification-toast {
+  position: fixed;
+  top: max(0.75rem, env(safe-area-inset-top));
+  left: 50%;
+  z-index: 80;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: start;
+  width: min(34rem, calc(100vw - 1.5rem));
+  padding: 0.82rem 0.9rem;
+  border: 1px solid rgba(76, 128, 104, 0.24);
+  border-radius: 1.05rem;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 250, 243, 0.94)),
+    radial-gradient(circle at 0% 0%, rgba(167, 210, 184, 0.24), transparent 36%);
+  box-shadow: 0 18px 46px rgba(38, 72, 58, 0.18);
+  transform: translateX(-50%);
+  animation: kanban-toast-enter 180ms ease-out both;
+}
+
+.kanban-notification-toast div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.kanban-notification-toast span {
+  color: #789084;
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.kanban-notification-toast strong {
+  color: #17382c;
+  font-size: 0.94rem;
+}
+
+.kanban-notification-toast p {
+  margin: 0;
+  color: #5f7c70;
+  font-size: 0.82rem;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
+.kanban-notification-toast button {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid rgba(76, 128, 104, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  color: #416352;
+  font-size: 0.9rem;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+@keyframes kanban-toast-enter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -0.7rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
 .kanban-notifications-list {
   display: grid;
   gap: 0.75rem;

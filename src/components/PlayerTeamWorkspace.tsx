@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
+  PlayerKanbanNotificationItem,
   PlayerKanbanCardUpdateRequest,
   PlayerKanbanSolutionSelectionRequest,
   PlayerTeamWorkspace,
@@ -40,6 +41,8 @@ function PlayerTeamWorkspaceScreen({
   const teamEconomy = workspace.teamEconomy;
   const stageSummaries = teamEconomy?.stageSummaries ?? [];
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const knownNotificationIdsRef = useRef<Set<number> | null>(null);
+  const [toastNotification, setToastNotification] = useState<PlayerKanbanNotificationItem | null>(null);
 
   useEffect(() => {
     if (workspace.sessionRuntime.timerStatus !== 'RUNNING') {
@@ -56,6 +59,41 @@ function PlayerTeamWorkspaceScreen({
     };
   }, [workspace.sessionRuntime.timerStatus, workspace.sessionRuntime.timerEndsAt]);
 
+  useEffect(() => {
+    const currentIds = new Set(kanbanNotifications.map((notification) => notification.notificationId));
+
+    if (knownNotificationIdsRef.current === null) {
+      knownNotificationIdsRef.current = currentIds;
+      return;
+    }
+
+    const freshNotifications = kanbanNotifications.filter(
+      (notification) => !knownNotificationIdsRef.current?.has(notification.notificationId),
+    );
+
+    if (freshNotifications.length) {
+      setToastNotification(freshNotifications[0]);
+    }
+
+    currentIds.forEach((notificationId) => {
+      knownNotificationIdsRef.current?.add(notificationId);
+    });
+  }, [kanbanNotifications]);
+
+  useEffect(() => {
+    if (!toastNotification) {
+      return;
+    }
+
+    const toastTimerId = window.setTimeout(() => {
+      setToastNotification(null);
+    }, 3200);
+
+    return () => {
+      window.clearTimeout(toastTimerId);
+    };
+  }, [toastNotification]);
+
   const remainingSeconds = getRuntimeRemainingSeconds(workspace.sessionRuntime, nowMs);
   const [chatDraft, setChatDraft] = useState('');
   const { chatState, sendMessage } = usePlayerTeamChat({
@@ -69,6 +107,23 @@ function PlayerTeamWorkspaceScreen({
 
   return (
     <section className="session-room">
+      {toastNotification ? (
+        <div className="kanban-notification-toast" role="status" aria-live="polite">
+          <div>
+            <span>Новое уведомление</span>
+            <strong>{toastNotification.title}</strong>
+            <p>{toastNotification.message}</p>
+          </div>
+          <button
+            type="button"
+            aria-label="Скрыть уведомление"
+            onClick={() => setToastNotification(null)}
+          >
+            x
+          </button>
+        </div>
+      ) : null}
+
       <BrandHeader
         compact
         eyebrow="Игровое пространство команды"
