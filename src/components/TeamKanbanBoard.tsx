@@ -4,6 +4,7 @@ import type {
   KanbanCardStatus,
   KanbanResponsibleDepartment,
   PlayerKanbanCardUpdateRequest,
+  PlayerKanbanSolutionSelectionRequest,
   PlayerTeamWorkspaceMember,
   TeamKanbanBoardItem,
   TeamKanbanCardItem,
@@ -13,6 +14,7 @@ interface TeamKanbanBoardProps {
   board: TeamKanbanBoardItem | null;
   updatingCardId?: number | null;
   onUpdateCardStatus?: (cardId: number, payload: PlayerKanbanCardUpdateRequest) => Promise<void>;
+  onSelectSolution?: (cardId: number, payload: PlayerKanbanSolutionSelectionRequest) => Promise<void>;
   currentParticipantId?: number;
   currentGameRole?: string | null;
   teamMembers?: PlayerTeamWorkspaceMember[];
@@ -138,6 +140,7 @@ function TeamKanbanBoard({
   board,
   updatingCardId = null,
   onUpdateCardStatus,
+  onSelectSolution,
   currentParticipantId,
   currentGameRole = null,
   teamMembers = [],
@@ -240,6 +243,63 @@ function TeamKanbanBoard({
     }
 
     return 'Задача ждёт финального согласования у главврача.';
+  };
+
+  const renderSolutionOptions = (card: TeamKanbanCardItem, isUpdating: boolean) => {
+    const options = card.solutionOptions ?? [];
+
+    if (!options.length) {
+      return (
+        <div className="kanban-solution-panel">
+          <strong>Способ решения</strong>
+          <p>Для этой задачи пока нет доступных вариантов решения.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="kanban-solution-panel">
+        <div className="kanban-solution-panel-header">
+          <strong>Способ решения</strong>
+          <span>{formatReservationState(card)}</span>
+        </div>
+
+        {options.map((option) => {
+          const selected = card.selectedSolutionOptionId === option.solutionOptionId;
+          const disabled = isUpdating || selected || !option.selectable || !onSelectSolution;
+
+          return (
+            <article
+              key={option.solutionOptionId}
+              className={selected ? 'kanban-solution-option kanban-solution-option--selected' : 'kanban-solution-option'}
+            >
+              <div>
+                <strong>{option.title}</strong>
+                <span>{formatSolutionResources(option)}</span>
+              </div>
+              {option.description ? <p>{option.description}</p> : null}
+              {!option.selectable && option.unavailableReason ? (
+                <p className="kanban-solution-warning">{option.unavailableReason}</p>
+              ) : null}
+              <button
+                type="button"
+                className={selected ? 'secondary-button compact-button' : 'primary-button compact-button'}
+                onClick={() => {
+                  if (!onSelectSolution) {
+                    return;
+                  }
+
+                  void onSelectSolution(card.cardId, { solutionOptionId: option.solutionOptionId });
+                }}
+                disabled={disabled}
+              >
+                {selected ? 'Выбрано' : isUpdating ? 'Резервируем...' : 'Выбрать решение'}
+              </button>
+            </article>
+          );
+        })}
+      </div>
+    );
   };
 
   const renderCardActions = (card: TeamKanbanCardItem) => {
@@ -386,18 +446,26 @@ function TeamKanbanBoard({
         return <p className="kanban-card-action-note">{getWaitingHint(card)}</p>;
       }
 
+      const canSendToReview = card.resourcesSpent || card.reservationStatus === 'RESERVED';
+
       return (
         <div className="kanban-card-actions">
+          {renderSolutionOptions(card, isUpdating)}
           <button
             type="button"
             className="primary-button compact-button"
             onClick={() => {
               void onUpdateCardStatus(card.cardId, { status: 'DEPARTMENT_REVIEW' });
             }}
-            disabled={isUpdating}
+            disabled={isUpdating || !canSendToReview}
           >
             {isUpdating ? 'Отправляем...' : 'Отправить на проверку'}
           </button>
+          {!canSendToReview ? (
+            <p className="kanban-card-action-note">
+              Сначала выберите способ решения: система создаст мягкий резерв ресурсов.
+            </p>
+          ) : null}
         </div>
       );
     }
@@ -535,6 +603,7 @@ function TeamKanbanBoard({
                     <span>{statusLabels[card.status]}</span>
                     <span>{priorityLabel}</span>
                     <span>{responsibleDepartmentLabel}</span>
+                    {card.selectedSolutionTitle ? <span>{formatReservationState(card)}</span> : null}
                     {card.assigneeName ? <span>{card.assigneeName}</span> : null}
                   </span>
                 </button>
@@ -561,6 +630,10 @@ function TeamKanbanBoard({
                       <div>
                         <dt>Ресурсы</dt>
                         <dd>{formatCardResources(card)}</dd>
+                      </div>
+                      <div>
+                        <dt>Решение и резерв</dt>
+                        <dd>{formatSelectedSolution(card)}</dd>
                       </div>
                     </dl>
                     <div className="kanban-card-history">
@@ -652,6 +725,7 @@ function TeamKanbanBoard({
                           <span>Этап {card.stageNumber}</span>
                           <span>{priorityLabel}</span>
                           <span>{responsibleDepartmentLabel}</span>
+                          {card.selectedSolutionTitle ? <span>{formatReservationState(card)}</span> : null}
                           {card.assigneeName ? <span>{card.assigneeName}</span> : null}
                         </span>
                       </button>
@@ -675,8 +749,8 @@ function TeamKanbanBoard({
                               <dd>{formatCardResources(card)}</dd>
                             </div>
                             <div>
-                              <dt>Списание</dt>
-                              <dd>{card.resourcesSpent ? 'Ресурсы уже списаны' : 'Будет при взятии в работу'}</dd>
+                              <dt>Решение и резерв</dt>
+                              <dd>{formatSelectedSolution(card)}</dd>
                             </div>
                           </dl>
                           <div className="kanban-card-history">
@@ -784,6 +858,46 @@ function formatCardResources(card: TeamKanbanCardItem): string {
   }
 
   return parts.join(' · ');
+}
+
+function formatSolutionResources(option: TeamKanbanCardItem['solutionOptions'][number]): string {
+  const parts = [`бюджет ${Number(option.budgetCost).toFixed(2)}`, `время ${option.timeCost}`];
+
+  if (option.requiredItemName && option.requiredItemQuantity > 0) {
+    parts.push(`${option.requiredItemName}: ${option.requiredItemQuantity} шт.`);
+  }
+
+  return parts.join(' · ');
+}
+
+function formatReservationState(card: TeamKanbanCardItem): string {
+  if (card.resourcesSpent || card.reservationStatus === 'COMMITTED') {
+    return 'Ресурсы списаны';
+  }
+
+  if (card.reservationStatus === 'RESERVED') {
+    return 'Ресурсы в резерве';
+  }
+
+  return 'Решение не выбрано';
+}
+
+function formatSelectedSolution(card: TeamKanbanCardItem): string {
+  if (!card.selectedSolutionTitle) {
+    return 'Способ решения ещё не выбран';
+  }
+
+  const parts = [
+    card.selectedSolutionTitle,
+    `бюджет ${Number(card.reservedBudgetAmount).toFixed(2)}`,
+    `время ${card.reservedTimeUnits}`,
+  ];
+
+  if (card.reservedItemName && card.reservedItemQuantity > 0) {
+    parts.push(`${card.reservedItemName}: ${card.reservedItemQuantity} шт.`);
+  }
+
+  return `${formatReservationState(card)} · ${parts.join(' · ')}`;
 }
 
 function formatHistoryTimestamp(value: string): string {

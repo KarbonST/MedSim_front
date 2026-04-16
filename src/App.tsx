@@ -38,7 +38,11 @@ import {
   startGameSession,
   startGameSessionTimer,
 } from './services/gameSessionsApi';
-import { fetchPlayerTeamWorkspace, updatePlayerKanbanCardStatus } from './services/playerSessionsApi';
+import {
+  fetchPlayerTeamWorkspace,
+  selectPlayerKanbanCardSolution,
+  updatePlayerKanbanCardStatus,
+} from './services/playerSessionsApi';
 import { createBasicAuthHeader, fetchStaffProfile } from './services/staffAuthApi';
 import type {
   GameSessionStageSettingsRequest,
@@ -46,6 +50,7 @@ import type {
   GameSessionKanbanResponse,
   Mode,
   PlayerKanbanCardUpdateRequest,
+  PlayerKanbanSolutionSelectionRequest,
   PlayerFormState,
   PlayerWorkspaceState,
   SessionEconomySettings,
@@ -926,6 +931,45 @@ function App() {
     }
   };
 
+  const handleSelectPlayerKanbanCardSolution = async (
+    cardId: number,
+    payload: PlayerKanbanSolutionSelectionRequest,
+  ): Promise<void> => {
+    const workspace = playerWorkspaceState.workspace;
+
+    if (!workspace) {
+      return;
+    }
+
+    setPlayerKanbanActionId(cardId);
+    setPlayerWorkspaceState((current) => ({
+      ...current,
+      error: '',
+    }));
+
+    try {
+      const workspacePayload = await selectPlayerKanbanCardSolution(
+        workspace.sessionCode,
+        workspace.participantId,
+        cardId,
+        payload,
+      );
+
+      setPlayerWorkspaceState({
+        loading: false,
+        error: '',
+        workspace: workspacePayload,
+      });
+    } catch (error) {
+      setPlayerWorkspaceState((current) => ({
+        ...current,
+        error: error instanceof Error ? error.message : 'Не удалось выбрать способ решения.',
+      }));
+    } finally {
+      setPlayerKanbanActionId(null);
+    }
+  };
+
   const handleCloseFacilitatorWorkspace = (): void => {
     setIsFacilitatorWorkspaceOpen(false);
     setStaffAuthHeader('');
@@ -975,6 +1019,7 @@ function App() {
               refreshError={playerWorkspaceState.error}
               kanbanActionId={playerKanbanActionId}
               onUpdateKanbanCardStatus={handleUpdatePlayerKanbanCardStatus}
+              onSelectKanbanCardSolution={handleSelectPlayerKanbanCardSolution}
               onReset={handleResetPlayerFlow}
             />
           ) : (

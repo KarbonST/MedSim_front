@@ -1884,7 +1884,7 @@ button {
 
 .team-resources-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: 0.75rem;
 }
 
@@ -1925,6 +1925,26 @@ button {
   color: #789084;
   font-size: 0.78rem;
   font-weight: 850;
+}
+
+.team-reserved-items-note {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(192, 141, 67, 0.22);
+  border-radius: 0.9rem;
+  background: rgba(255, 249, 232, 0.82);
+}
+
+.team-reserved-items-note strong {
+  color: #694c20;
+  font-size: 0.78rem;
+}
+
+.team-reserved-items-note span {
+  color: #6f5a35;
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 .team-economy-event-list {
@@ -2205,6 +2225,69 @@ button {
 
 .kanban-card-actions--split {
   grid-template-columns: 1fr;
+}
+
+.kanban-solution-panel {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.72rem;
+  border: 1px solid rgba(76, 128, 104, 0.18);
+  border-radius: 0.95rem;
+  background:
+    linear-gradient(135deg, rgba(246, 251, 247, 0.94), rgba(255, 255, 255, 0.82)),
+    radial-gradient(circle at 100% 0%, rgba(167, 210, 184, 0.18), transparent 34%);
+}
+
+.kanban-solution-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.kanban-solution-panel strong {
+  color: #244737;
+  font-size: 0.82rem;
+}
+
+.kanban-solution-panel-header span {
+  color: #5f7c70;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.kanban-solution-option {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.7rem;
+  border: 1px solid rgba(126, 173, 152, 0.22);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.kanban-solution-option--selected {
+  border-color: rgba(76, 128, 104, 0.38);
+  background: rgba(232, 246, 237, 0.86);
+}
+
+.kanban-solution-option div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.kanban-solution-option span {
+  color: #5f7c70;
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.kanban-solution-option p {
+  color: #6b8779 !important;
+  font-size: 0.78rem !important;
+}
+
+.kanban-solution-warning {
+  color: #8b4b3c !important;
 }
 
 .kanban-action-field {

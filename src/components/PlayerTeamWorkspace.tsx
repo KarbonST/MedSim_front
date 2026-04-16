@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
-import type { PlayerKanbanCardUpdateRequest, PlayerTeamWorkspace } from '../types/app';
+import type {
+  PlayerKanbanCardUpdateRequest,
+  PlayerKanbanSolutionSelectionRequest,
+  PlayerTeamWorkspace,
+} from '../types/app';
 import BrandHeader from './BrandHeader';
 import { getSessionStatusLabel } from '../constants/sessionStatuses';
 import { formatRuntimeDuration, getInteractionModeLabel, getRuntimeRemainingSeconds, getTimerStatusLabel } from '../lib/sessionRuntime';
@@ -15,6 +19,7 @@ interface PlayerTeamWorkspaceProps {
   refreshError: string;
   kanbanActionId: number | null;
   onUpdateKanbanCardStatus: (cardId: number, payload: PlayerKanbanCardUpdateRequest) => Promise<void>;
+  onSelectKanbanCardSolution: (cardId: number, payload: PlayerKanbanSolutionSelectionRequest) => Promise<void>;
   onReset: () => void;
 }
 
@@ -24,6 +29,7 @@ function PlayerTeamWorkspaceScreen({
   refreshError,
   kanbanActionId,
   onUpdateKanbanCardStatus,
+  onSelectKanbanCardSolution,
   onReset,
 }: PlayerTeamWorkspaceProps) {
   const isFinished = workspace.sessionStatus === 'FINISHED';
@@ -149,7 +155,11 @@ function PlayerTeamWorkspaceScreen({
           kicker="Ресурсы"
           title="Ресурсы команды"
           defaultExpanded
-          badge={<span className="status-pill subtle-status-pill">Баланс: {Number(teamEconomy.currentBalance).toFixed(2)}</span>}
+          badge={(
+            <span className="status-pill subtle-status-pill">
+              Доступно: {Number(teamEconomy.availableBalance).toFixed(2)}
+            </span>
+          )}
         >
           <div className="team-resources-panel">
             <div className="team-resources-grid">
@@ -160,6 +170,14 @@ function PlayerTeamWorkspaceScreen({
               <article className="info-card team-resource-card">
                 <span>Время этапа</span>
                 <strong>{teamEconomy.currentStageTimeUnits}</strong>
+              </article>
+              <article className="info-card team-resource-card">
+                <span>В резерве</span>
+                <strong>{Number(teamEconomy.reservedBudget).toFixed(2)} · {teamEconomy.reservedStageTimeUnits}</strong>
+              </article>
+              <article className="info-card team-resource-card">
+                <span>Доступно</span>
+                <strong>{Number(teamEconomy.availableBalance).toFixed(2)} · {teamEconomy.availableStageTimeUnits}</strong>
               </article>
               <article className="info-card team-resource-card">
                 <span>Доход / расходы</span>
@@ -199,6 +217,16 @@ function PlayerTeamWorkspaceScreen({
                     </p>
                   </div>
                 )}
+                {teamEconomy.reservedItems.length ? (
+                  <div className="team-reserved-items-note">
+                    <strong>В резерве:</strong>
+                    <span>
+                      {teamEconomy.reservedItems
+                        .map((item) => `${item.itemName}: ${item.quantity} шт.`)
+                        .join(' · ')}
+                    </span>
+                  </div>
+                ) : null}
               </div>
 
               <div className="team-resource-subpanel">
@@ -223,7 +251,7 @@ function PlayerTeamWorkspaceScreen({
                   </div>
                 ) : (
                   <div className="waiting-note compact-note">
-                    <p>Операции появятся после взятия задач в работу или завершения этапа ведущим.</p>
+                    <p>Операции появятся после выбора способа решения, согласования задачи или завершения этапа ведущим.</p>
                   </div>
                 )}
               </div>
@@ -275,6 +303,7 @@ function PlayerTeamWorkspaceScreen({
               board={workspace.teamKanbanBoard}
               updatingCardId={kanbanActionId}
               onUpdateCardStatus={onUpdateKanbanCardStatus}
+              onSelectSolution={onSelectKanbanCardSolution}
               currentParticipantId={workspace.participantId}
               currentGameRole={workspace.gameRole}
               teamMembers={workspace.teammates}
@@ -291,6 +320,7 @@ function PlayerTeamWorkspaceScreen({
                 board={workspace.teamKanbanBoard}
                 updatingCardId={kanbanActionId}
                 onUpdateCardStatus={onUpdateKanbanCardStatus}
+                onSelectSolution={onSelectKanbanCardSolution}
                 currentParticipantId={workspace.participantId}
                 currentGameRole={workspace.gameRole}
                 teamMembers={workspace.teammates}

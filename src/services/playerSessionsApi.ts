@@ -1,6 +1,7 @@
 import type {
   AvailablePlayerSession,
   PlayerKanbanCardUpdateRequest,
+  PlayerKanbanSolutionSelectionRequest,
   PlayerSession,
   PlayerSessionJoinRequest,
   PlayerTeamWorkspace,
@@ -118,6 +119,36 @@ export async function updatePlayerKanbanCardStatus(
       : response.status === 404
         ? 'Карточка больше не найдена. Обновите командный экран.'
         : 'Не удалось обновить карточку. Попробуйте ещё раз.';
+
+    throw new Error(await parseErrorMessage(response, fallbackMessage));
+  }
+
+  return response.json() as Promise<PlayerTeamWorkspace>;
+}
+
+export async function selectPlayerKanbanCardSolution(
+  sessionCode: string,
+  participantId: number,
+  cardId: number,
+  payload: PlayerKanbanSolutionSelectionRequest,
+): Promise<PlayerTeamWorkspace> {
+  const response = await fetch(
+    `${API_PREFIX}/player-sessions/${encodeURIComponent(sessionCode)}/participants/${participantId}/kanban/cards/${cardId}/solution`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (!response.ok) {
+    const fallbackMessage = response.status === 409
+      ? 'Не удалось выбрать способ решения: проверьте ресурсы команды.'
+      : response.status === 404
+        ? 'Способ решения или карточка больше не найдены. Обновите командный экран.'
+        : 'Не удалось выбрать способ решения. Попробуйте ещё раз.';
 
     throw new Error(await parseErrorMessage(response, fallbackMessage));
   }

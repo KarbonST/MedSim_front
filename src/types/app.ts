@@ -84,6 +84,7 @@ export type KanbanCardHistoryEventType =
   | 'DEPARTMENT_ASSIGNED'
   | 'EXECUTOR_ASSIGNED'
   | 'WORK_STARTED'
+  | 'SOLUTION_SELECTED'
   | 'SENT_TO_DEPARTMENT_REVIEW'
   | 'DEPARTMENT_APPROVED'
   | 'CHIEF_DOCTOR_APPROVED'
@@ -184,12 +185,34 @@ export interface TeamEconomyItem {
   teamName: string;
   currentBalance: number;
   currentStageTimeUnits: number;
+  reservedBudget: number;
+  reservedStageTimeUnits: number;
+  availableBalance: number;
+  availableStageTimeUnits: number;
   totalIncome: number;
   totalExpenses: number;
   totalPenalties: number;
   totalBonuses: number;
+  reservedItems: TeamEconomyReservedItem[];
   rooms: TeamRoomEconomyItem[];
   recentEvents: TeamEconomyEventItem[];
+}
+
+export interface TeamEconomyReservedItem {
+  itemName: string;
+  quantity: number;
+}
+
+export interface KanbanSolutionOptionItem {
+  solutionOptionId: number;
+  title: string;
+  description: string | null;
+  budgetCost: number;
+  timeCost: number;
+  requiredItemName: string | null;
+  requiredItemQuantity: number;
+  selectable: boolean;
+  unavailableReason: string | null;
 }
 
 export interface TeamKanbanCardItem {
@@ -206,6 +229,14 @@ export interface TeamKanbanCardItem {
   timeCost: number;
   requiredItemName: string | null;
   requiredItemQuantity: number;
+  solutionOptions: KanbanSolutionOptionItem[];
+  selectedSolutionOptionId: number | null;
+  selectedSolutionTitle: string | null;
+  reservationStatus: 'RESERVED' | 'COMMITTED' | 'RELEASED' | null;
+  reservedBudgetAmount: number;
+  reservedTimeUnits: number;
+  reservedItemName: string | null;
+  reservedItemQuantity: number;
   resourcesSpent: boolean;
   responsibleDepartment: KanbanResponsibleDepartment | null;
   status: KanbanCardStatus;
@@ -238,7 +269,12 @@ export interface PlayerKanbanNotificationItem {
 
 export interface TeamEconomyEventItem {
   eventId: number;
-  eventType: 'TASK_RESOURCES_SPENT' | 'STAGE_SETTLED';
+  eventType:
+    | 'TASK_RESOURCES_SPENT'
+    | 'TASK_RESOURCES_RESERVED'
+    | 'TASK_RESERVATION_RELEASED'
+    | 'TASK_RESERVATION_COMMITTED'
+    | 'STAGE_SETTLED';
   stageNumber: number | null;
   amountDelta: number;
   timeDelta: number;
@@ -253,6 +289,10 @@ export interface PlayerKanbanCardUpdateRequest {
   priority?: KanbanCardPriority;
   responsibleDepartment?: KanbanResponsibleDepartment;
   assigneeParticipantId?: number;
+}
+
+export interface PlayerKanbanSolutionSelectionRequest {
+  solutionOptionId: number;
 }
 
 export interface TeamKanbanBoardItem {
