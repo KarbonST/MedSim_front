@@ -869,7 +869,7 @@ function getRolePanelText({
   if (currentGameRole === chiefDoctorRole) {
     return {
       title: 'Разбор задач главврачом',
-      description: `Выберите приоритет и ответственное подразделение для задач этапа. Сейчас видно карточек: ${visibleCount}.`,
+      description: `Выберите приоритет и ответственное подразделение для задач этапа. Выбор подразделения для решения задачи может повлиять на результат. Сейчас видно карточек: ${visibleCount}.`,
     };
   }
 
@@ -909,6 +909,16 @@ function getRecommendedPriority(severity: TeamKanbanCardItem['severity']): Kanba
 }
 
 function formatCardResources(card: TeamKanbanCardItem): string {
+  const options = card.solutionOptions ?? [];
+
+  if (options.length > 1) {
+    return `вариантов решения: ${options.length}`;
+  }
+
+  if (options.length === 1) {
+    return `1 вариант: ${formatSolutionResources(options[0])}`;
+  }
+
   const parts = [`бюджет ${Number(card.budgetCost).toFixed(2)}`, `время ${card.timeCost}`];
 
   if (card.requiredItemName && card.requiredItemQuantity > 0) {

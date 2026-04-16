@@ -1544,6 +1544,13 @@ button {
   font-size: 1rem;
 }
 
+.inventory-item-reserve {
+  color: #7a8e83;
+  font-size: 0.76rem;
+  font-weight: 850;
+  line-height: 1.3;
+}
+
 @media (max-width: 900px) {
   .facilitator-team-chat-grid {
     grid-template-columns: 1fr;

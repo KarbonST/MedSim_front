@@ -282,23 +282,33 @@ function PlayerTeamWorkspaceScreen({
                 </div>
                 {workspace.inventoryVisible && workspace.teamInventory.length ? (
                   <div className="team-inventory-grid">
-                    {workspace.teamInventory.map((item) => (
-                      <article key={item.itemName} className="inventory-item-card">
-                        <span className="inventory-item-name">{item.itemName}</span>
-                        <strong className="inventory-item-quantity">{item.quantity} шт.</strong>
-                      </article>
-                    ))}
+                    {workspace.teamInventory.map((item) => {
+                      const reservedQuantity = getReservedItemQuantity(teamEconomy.reservedItems, item.itemName);
+                      const availableQuantity = item.quantity - reservedQuantity;
+
+                      return (
+                        <article key={item.itemName} className="inventory-item-card">
+                          <span className="inventory-item-name">{item.itemName}</span>
+                          <strong className="inventory-item-quantity">{item.quantity} шт.</strong>
+                          {reservedQuantity > 0 ? (
+                            <span className="inventory-item-reserve">
+                              В резерве {reservedQuantity} · доступно {availableQuantity}
+                            </span>
+                          ) : null}
+                        </article>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="waiting-note compact-note">
                     <p>
                       {workspace.inventoryVisible
                         ? 'Для вашей команды пока не сформирован стартовый набор предметов.'
-                        : 'Детальный склад видят роли с доступом к инвентарю, но бюджет и время доступны всей команде.'}
+                        : 'Детальный склад и резервы видят руководящие роли, но бюджет и время доступны всей команде.'}
                     </p>
                   </div>
                 )}
-                {teamEconomy.reservedItems.length ? (
+                {workspace.inventoryVisible && teamEconomy.reservedItems.length ? (
                   <div className="team-reserved-items-note">
                     <strong>В резерве:</strong>
                     <span>
@@ -593,6 +603,17 @@ function formatSignedInteger(value: number): string {
   }
 
   return `${value}`;
+}
+
+function getReservedItemQuantity(
+  reservedItems: NonNullable<PlayerTeamWorkspace['teamEconomy']>['reservedItems'],
+  itemName: string,
+): number {
+  const reservedItem = reservedItems.find(
+    (item) => item.itemName.toLowerCase() === itemName.toLowerCase(),
+  );
+
+  return reservedItem?.quantity ?? 0;
 }
 
 export default PlayerTeamWorkspaceScreen;
