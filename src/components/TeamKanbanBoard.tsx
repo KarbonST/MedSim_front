@@ -148,6 +148,7 @@ function TeamKanbanBoard({
   const [expandedCardIds, setExpandedCardIds] = useState<Set<number>>(() => new Set());
   const [drafts, setDrafts] = useState<Record<number, CardDraft>>({});
   const [showAllCards, setShowAllCards] = useState(false);
+  const [mobileColumnIndex, setMobileColumnIndex] = useState(0);
   const currentDepartment = currentGameRole ? leadRoleDepartments[currentGameRole] ?? null : null;
   const isChiefDoctor = currentGameRole === chiefDoctorRole;
   const focusedCards = cards.filter((card) => {
@@ -169,6 +170,12 @@ function TeamKanbanBoard({
   const scopeSummary = canSwitchCardScope
     ? `${showAllCards ? 'Вся доска команды' : focusScopeLabel}: ${visibleCards.length} из ${cards.length}`
     : `Видно карточек: ${visibleCards.length}`;
+  const boardColumns = columns.map((column) => ({
+    ...column,
+    cards: workflowVisibleCards.filter((card) => column.statuses.includes(card.status)),
+  }));
+  const safeMobileColumnIndex = Math.min(mobileColumnIndex, boardColumns.length - 1);
+  const activeMobileColumn = boardColumns[safeMobileColumnIndex];
 
   const toggleCard = (cardId: number): void => {
     setExpandedCardIds((current) => {
@@ -747,6 +754,115 @@ function TeamKanbanBoard({
     );
   };
 
+  const renderBoardCard = (card: TeamKanbanCardItem) => {
+    const expanded = expandedCardIds.has(card.cardId);
+    const history = card.history ?? [];
+    const responsibleDepartmentLabel = card.responsibleDepartment
+      ? departmentLabels[card.responsibleDepartment]
+      : 'Подразделение не выбрано';
+    const priorityLabel = card.priority ? priorityLabels[card.priority] : 'Приоритет не выбран';
+    const priorityClass = card.priority ? card.priority.toLowerCase() : 'unprioritized';
+
+    return (
+      <article
+        key={card.cardId}
+        className={`kanban-card kanban-card--${priorityClass}${expanded ? ' kanban-card--expanded' : ''}`}
+      >
+        <button
+          type="button"
+          className="kanban-card-summary"
+          aria-expanded={expanded}
+          onClick={() => toggleCard(card.cardId)}
+        >
+          <span className="kanban-card-chevron" aria-hidden="true" />
+          <span className="kanban-card-room">{card.roomName}</span>
+          <span className="kanban-card-title">{card.title}</span>
+          <span className="kanban-card-mini-meta">
+            <span>Этап {card.stageNumber}</span>
+            <span>{statusLabels[card.status]}</span>
+            <span>{priorityLabel}</span>
+            <span>{responsibleDepartmentLabel}</span>
+            {card.selectedSolutionTitle ? <span>{formatReservationState(card)}</span> : null}
+            {card.assigneeName ? <span>{card.assigneeName}</span> : null}
+          </span>
+        </button>
+
+        {expanded ? (
+          <div className="kanban-card-details">
+            <p>
+              {severityLabels[card.severity]} проблема · {statusLabels[card.status]} · кабинет {card.roomCode}
+            </p>
+            <dl className="kanban-card-facts">
+              <div>
+                <dt>Подразделение</dt>
+                <dd>{responsibleDepartmentLabel}</dd>
+              </div>
+              <div>
+                <dt>Исполнитель</dt>
+                <dd>{card.assigneeName ?? 'Не назначен'}</dd>
+              </div>
+              <div>
+                <dt>Ресурсы</dt>
+                <dd>{formatCardResources(card)}</dd>
+              </div>
+              <div>
+                <dt>Решение и резерв</dt>
+                <dd>{formatSelectedSolution(card)}</dd>
+              </div>
+            </dl>
+            <div className="kanban-card-history">
+              <h5>История карточки</h5>
+              {history.length ? (
+                <ol>
+                  {history.map((event) => (
+                    <li key={event.eventId}>
+                      <time>{formatHistoryTimestamp(event.createdAt)}</time>
+                      <span>{event.message}</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p>История появится после первых действий с карточкой.</p>
+              )}
+            </div>
+            {renderCardActions(card)}
+          </div>
+        ) : null}
+      </article>
+    );
+  };
+
+  const renderBoardColumn = (
+    column: KanbanColumn,
+    columnCards: TeamKanbanCardItem[],
+    extraClassName = '',
+  ) => (
+    <section
+      key={column.title}
+      className={`kanban-column kanban-column--${column.statuses[0].toLowerCase()}${extraClassName}`}
+    >
+      <div className="kanban-column-header">
+        <div>
+          <h3>{column.title}</h3>
+          <p>{column.hint}</p>
+        </div>
+        <span className="status-pill subtle-status-pill">{columnCards.length}</span>
+      </div>
+
+      <div className="kanban-card-list">
+        {columnCards.length ? columnCards.map(renderBoardCard) : <div className="kanban-empty-column">Пока пусто</div>}
+      </div>
+    </section>
+  );
+
+  const goToPreviousMobileColumn = (): void => {
+    setMobileColumnIndex((current) => (current === 0 ? columns.length - 1 : current - 1));
+  };
+
+  const goToNextMobileColumn = (): void => {
+    setMobileColumnIndex((current) => (current === columns.length - 1 ? 0 : current + 1));
+  };
+
   const rolePanel = getRolePanelText({
     readOnly,
     currentGameRole,
@@ -896,105 +1012,34 @@ function TeamKanbanBoard({
         </div>
       </div>
       <div className="team-kanban-board">
-      {columns.map((column) => {
-        const columnCards = workflowVisibleCards.filter((card) => column.statuses.includes(card.status));
-
-        return (
-          <section key={column.title} className={`kanban-column kanban-column--${column.statuses[0].toLowerCase()}`}>
-            <div className="kanban-column-header">
-              <div>
-                <h3>{column.title}</h3>
-                <p>{column.hint}</p>
-              </div>
-              <span className="status-pill subtle-status-pill">{columnCards.length}</span>
-            </div>
-
-            <div className="kanban-card-list">
-              {columnCards.length ? (
-                columnCards.map((card) => {
-                  const expanded = expandedCardIds.has(card.cardId);
-                  const history = card.history ?? [];
-                  const responsibleDepartmentLabel = card.responsibleDepartment
-                    ? departmentLabels[card.responsibleDepartment]
-                    : 'Подразделение не выбрано';
-                  const priorityLabel = card.priority ? priorityLabels[card.priority] : 'Приоритет не выбран';
-                  const priorityClass = card.priority ? card.priority.toLowerCase() : 'unprioritized';
-
-                  return (
-                    <article
-                      key={card.cardId}
-                      className={`kanban-card kanban-card--${priorityClass}${expanded ? ' kanban-card--expanded' : ''}`}
-                    >
-                      <button
-                        type="button"
-                        className="kanban-card-summary"
-                        aria-expanded={expanded}
-                        onClick={() => toggleCard(card.cardId)}
-                      >
-                        <span className="kanban-card-chevron" aria-hidden="true" />
-                        <span className="kanban-card-room">{card.roomName}</span>
-                        <span className="kanban-card-title">{card.title}</span>
-                        <span className="kanban-card-mini-meta">
-                          <span>Этап {card.stageNumber}</span>
-                          <span>{statusLabels[card.status]}</span>
-                          <span>{priorityLabel}</span>
-                          <span>{responsibleDepartmentLabel}</span>
-                          {card.selectedSolutionTitle ? <span>{formatReservationState(card)}</span> : null}
-                          {card.assigneeName ? <span>{card.assigneeName}</span> : null}
-                        </span>
-                      </button>
-
-                      {expanded ? (
-                        <div className="kanban-card-details">
-                          <p>
-                            {severityLabels[card.severity]} проблема · {statusLabels[card.status]} · кабинет {card.roomCode}
-                          </p>
-                          <dl className="kanban-card-facts">
-                            <div>
-                              <dt>Подразделение</dt>
-                              <dd>{responsibleDepartmentLabel}</dd>
-                            </div>
-                            <div>
-                              <dt>Исполнитель</dt>
-                              <dd>{card.assigneeName ?? 'Не назначен'}</dd>
-                            </div>
-                            <div>
-                              <dt>Ресурсы</dt>
-                              <dd>{formatCardResources(card)}</dd>
-                            </div>
-                            <div>
-                              <dt>Решение и резерв</dt>
-                              <dd>{formatSelectedSolution(card)}</dd>
-                            </div>
-                          </dl>
-                          <div className="kanban-card-history">
-                            <h5>История карточки</h5>
-                            {history.length ? (
-                              <ol>
-                                {history.map((event) => (
-                                  <li key={event.eventId}>
-                                    <time>{formatHistoryTimestamp(event.createdAt)}</time>
-                                    <span>{event.message}</span>
-                                  </li>
-                                ))}
-                              </ol>
-                            ) : (
-                              <p>История появится после первых действий с карточкой.</p>
-                            )}
-                          </div>
-                          {renderCardActions(card)}
-                        </div>
-                      ) : null}
-                    </article>
-                  );
-                })
-              ) : (
-                <div className="kanban-empty-column">Пока пусто</div>
-              )}
-            </div>
-          </section>
-        );
-      })}
+        {boardColumns.map((column) => renderBoardColumn(column, column.cards))}
+      </div>
+      <div className="mobile-kanban-board" aria-label="Мобильная канбан-доска">
+        <div className="mobile-kanban-column-switcher">
+          <button
+            type="button"
+            className="secondary-button compact-button mobile-kanban-arrow"
+            onClick={goToPreviousMobileColumn}
+            aria-label="Предыдущая колонка"
+          >
+            ←
+          </button>
+          <div>
+            <strong>{activeMobileColumn.title}</strong>
+            <span>
+              {safeMobileColumnIndex + 1} из {boardColumns.length} · {activeMobileColumn.cards.length} карточек
+            </span>
+          </div>
+          <button
+            type="button"
+            className="secondary-button compact-button mobile-kanban-arrow"
+            onClick={goToNextMobileColumn}
+            aria-label="Следующая колонка"
+          >
+            →
+          </button>
+        </div>
+        {renderBoardColumn(activeMobileColumn, activeMobileColumn.cards, ' kanban-column--mobile-active')}
       </div>
       {renderHeldCardsBlock()}
     </>
