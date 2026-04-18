@@ -48,6 +48,7 @@ const statusLabels: Record<KanbanCardStatus, string> = {
   DEPARTMENT_REVIEW: 'Проверка подразделения',
   CHIEF_DOCTOR_REVIEW: 'Финальная проверка',
   REWORK: 'Вернулась в задачи этапа',
+  HOLD: 'Отложена',
   DONE: 'Готово',
 };
 
@@ -172,6 +173,8 @@ function TeamKanbanBoard({
   });
   const canSwitchCardScope = !readOnly && !isChiefDoctor && Boolean(currentParticipantId);
   const visibleCards = canSwitchCardScope && showAllCards ? cards : focusedCards;
+  const workflowVisibleCards = visibleCards.filter((card) => card.status !== 'HOLD');
+  const heldVisibleCards = visibleCards.filter((card) => card.status === 'HOLD');
   const focusScopeLabel = getFocusScopeLabel(currentDepartment);
   const scopeSummary = canSwitchCardScope
     ? `${showAllCards ? 'Вся доска команды' : focusScopeLabel}: ${visibleCards.length} из ${cards.length}`
@@ -215,6 +218,32 @@ function TeamKanbanBoard({
     department !== null && currentGameRole === departmentLeadRoles[department]
   );
 
+  const canManageHold = (card: TeamKanbanCardItem): boolean => (
+    currentGameRole === chiefDoctorRole || isCurrentUserDepartmentLead(card.responsibleDepartment)
+  );
+
+  const canHoldCard = (card: TeamKanbanCardItem): boolean => (
+    canManageHold(card)
+    && ['REGISTERED', 'ASSIGNED', 'READY_FOR_WORK', 'REWORK'].includes(card.status)
+  );
+
+  const renderHoldButton = (card: TeamKanbanCardItem, isUpdating: boolean) => (
+    <button
+      type="button"
+      className="secondary-button compact-button"
+      onClick={() => {
+        if (!onUpdateCardStatus) {
+          return;
+        }
+
+        void onUpdateCardStatus(card.cardId, { status: 'HOLD' });
+      }}
+      disabled={isUpdating}
+    >
+      {isUpdating ? 'Откладываем...' : 'Отложить на следующий этап'}
+    </button>
+  );
+
   const getWaitingHint = (card: TeamKanbanCardItem): string => {
     if (readOnly) {
       return 'Доска открыта в режиме просмотра.';
@@ -222,6 +251,10 @@ function TeamKanbanBoard({
 
     if (card.status === 'DONE') {
       return 'Задача уже закрыта.';
+    }
+
+    if (card.status === 'HOLD') {
+      return 'Задача отложена: при переходе на следующий этап она вернётся в общий пул.';
     }
 
     if (card.status === 'REGISTERED' || card.status === 'REWORK') {
@@ -370,12 +403,21 @@ function TeamKanbanBoard({
           >
             {isUpdating ? 'Передаём...' : 'Передать руководителю'}
           </button>
+          {canHoldCard(card) ? renderHoldButton(card, isUpdating) : null}
         </div>
       );
     }
 
     if (card.status === 'ASSIGNED') {
       if (!card.responsibleDepartment || !isCurrentUserDepartmentLead(card.responsibleDepartment)) {
+        if (canHoldCard(card)) {
+          return (
+            <div className="kanban-card-actions">
+              {renderHoldButton(card, isUpdating)}
+            </div>
+          );
+        }
+
         return <p className="kanban-card-action-note">{getWaitingHint(card)}</p>;
       }
 
@@ -422,11 +464,20 @@ function TeamKanbanBoard({
           >
             {isUpdating ? 'Назначаем...' : 'Назначить исполнителя'}
           </button>
+          {canHoldCard(card) ? renderHoldButton(card, isUpdating) : null}
         </div>
       );
     }
 
     if (card.status === 'READY_FOR_WORK') {
+      if (canHoldCard(card) && card.assigneeParticipantId !== currentParticipantId) {
+        return (
+          <div className="kanban-card-actions">
+            {renderHoldButton(card, isUpdating)}
+          </div>
+        );
+      }
+
       if (card.assigneeParticipantId !== currentParticipantId) {
         return <p className="kanban-card-action-note">{getWaitingHint(card)}</p>;
       }
@@ -590,7 +641,120 @@ function TeamKanbanBoard({
       );
     }
 
+    if (card.status === 'HOLD') {
+      if (!canManageHold(card)) {
+        return <p className="kanban-card-action-note">{getWaitingHint(card)}</p>;
+      }
+
+      return (
+        <div className="kanban-card-actions">
+          <button
+            type="button"
+            className="secondary-button compact-button"
+            onClick={() => {
+              void onUpdateCardStatus(card.cardId, { status: 'REGISTERED' });
+            }}
+            disabled={isUpdating}
+          >
+            {isUpdating ? 'Возвращаем...' : 'Вернуть в задачи этапа'}
+          </button>
+        </div>
+      );
+    }
+
     return <p className="kanban-card-action-note">{getWaitingHint(card)}</p>;
+  };
+
+  const renderHeldCardsBlock = () => {
+    if (!heldVisibleCards.length) {
+      return null;
+    }
+
+    return (
+      <details className="kanban-held-section" defaultOpen={variant === 'flat'}>
+        <summary>
+          <span>
+            <strong>Отложено на следующий этап</strong>
+            <small>Карточки временно не участвуют в текущей работе и вернутся в пул при смене этапа.</small>
+          </span>
+          <span className="status-pill subtle-status-pill">{heldVisibleCards.length}</span>
+        </summary>
+
+        <div className="team-kanban-flat-list kanban-held-list">
+          {heldVisibleCards.map((card) => {
+            const expanded = expandedCardIds.has(card.cardId);
+            const history = card.history ?? [];
+            const responsibleDepartmentLabel = card.responsibleDepartment
+              ? departmentLabels[card.responsibleDepartment]
+              : 'Подразделение не выбрано';
+            const priorityLabel = card.priority ? priorityLabels[card.priority] : 'Приоритет не выбран';
+
+            return (
+              <article
+                key={card.cardId}
+                className={`kanban-card kanban-card--hold${expanded ? ' kanban-card--expanded' : ''}`}
+              >
+                <button
+                  type="button"
+                  className="kanban-card-summary"
+                  aria-expanded={expanded}
+                  onClick={() => toggleCard(card.cardId)}
+                >
+                  <span className="kanban-card-chevron" aria-hidden="true" />
+                  <span className="kanban-card-room">{card.roomName}</span>
+                  <span className="kanban-card-title">{card.title}</span>
+                  <span className="kanban-card-mini-meta">
+                    <span>Этап {card.stageNumber}</span>
+                    <span>{statusLabels[card.status]}</span>
+                    <span>{priorityLabel}</span>
+                    <span>{responsibleDepartmentLabel}</span>
+                  </span>
+                </button>
+
+                {expanded ? (
+                  <div className="kanban-card-details">
+                    <p>
+                      {severityLabels[card.severity]} проблема · кабинет {card.roomCode}. Отложенная задача вернётся
+                      в общий пул при переходе на следующий этап.
+                    </p>
+                    <dl className="kanban-card-facts">
+                      <div>
+                        <dt>Подразделение</dt>
+                        <dd>{responsibleDepartmentLabel}</dd>
+                      </div>
+                      <div>
+                        <dt>Ресурсы</dt>
+                        <dd>{formatCardResources(card)}</dd>
+                      </div>
+                      <div>
+                        <dt>Решение и резерв</dt>
+                        <dd>{formatSelectedSolution(card)}</dd>
+                      </div>
+                    </dl>
+                    <div className="kanban-card-history">
+                      <h5>История карточки</h5>
+                      {history.length ? (
+                        <ol>
+                          {history.map((event) => (
+                            <li key={event.eventId}>
+                              <time>{formatHistoryTimestamp(event.createdAt)}</time>
+                              <span>{event.message}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <p>История появится после первых действий с карточкой.</p>
+                      )}
+                    </div>
+                    {renderCardActions(card)}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
+        </div>
+      </details>
+    );
   };
 
   const rolePanel = getRolePanelText({
@@ -633,7 +797,7 @@ function TeamKanbanBoard({
         </div>
 
         <div className="team-kanban-flat-list">
-          {visibleCards.map((card) => {
+          {workflowVisibleCards.map((card) => {
             const expanded = expandedCardIds.has(card.cardId);
             const history = card.history ?? [];
             const responsibleDepartmentLabel = card.responsibleDepartment
@@ -716,6 +880,7 @@ function TeamKanbanBoard({
             );
           })}
         </div>
+        {renderHeldCardsBlock()}
       </>
     );
   }
@@ -742,7 +907,7 @@ function TeamKanbanBoard({
       </div>
       <div className="team-kanban-board">
       {columns.map((column) => {
-        const columnCards = visibleCards.filter((card) => column.statuses.includes(card.status));
+        const columnCards = workflowVisibleCards.filter((card) => column.statuses.includes(card.status));
 
         return (
           <section key={column.title} className={`kanban-column kanban-column--${column.statuses[0].toLowerCase()}`}>
@@ -840,6 +1005,7 @@ function TeamKanbanBoard({
         );
       })}
       </div>
+      {renderHeldCardsBlock()}
     </>
   );
 }
@@ -869,7 +1035,7 @@ function getRolePanelText({
   if (currentGameRole === chiefDoctorRole) {
     return {
       title: 'Разбор задач главврачом',
-      description: `Выберите приоритет и ответственное подразделение для задач этапа. Выбор подразделения для решения задачи может повлиять на результат. Сейчас видно карточек: ${visibleCount}.`,
+      description: `Выберите приоритет и подразделение или отложите задачу на следующий этап. Выбор подразделения может повлиять на результат. Сейчас видно карточек: ${visibleCount}.`,
     };
   }
 
@@ -878,7 +1044,7 @@ function getRolePanelText({
       title: 'Назначение исполнителей',
       description: showingAllCards
         ? `Показываем все карточки команды (${totalCount}), но действия доступны только по задачам вашего подразделения.`
-        : 'Показываем задачи вашего подразделения: назначайте исполнителей и согласовывайте готовые работы.',
+        : 'Показываем задачи вашего подразделения: назначайте исполнителей, согласовывайте готовые работы или откладывайте задачи до старта работы.',
     };
   }
 

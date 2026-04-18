@@ -76,6 +76,7 @@ export type KanbanCardStatus =
   | 'DEPARTMENT_REVIEW'
   | 'CHIEF_DOCTOR_REVIEW'
   | 'REWORK'
+  | 'HOLD'
   | 'DONE';
 export type KanbanCardPriority = 'LOW' | 'MEDIUM' | 'HIGH';
 export type KanbanResponsibleDepartment = 'NURSING' | 'ENGINEERING';
@@ -89,6 +90,8 @@ export type KanbanCardHistoryEventType =
   | 'DEPARTMENT_APPROVED'
   | 'SOLUTION_FAILED'
   | 'CHIEF_DOCTOR_APPROVED'
+  | 'TASK_HELD'
+  | 'HOLD_RELEASED'
   | 'RETURNED_TO_STAGE';
 
 export interface SessionStageSetting {
