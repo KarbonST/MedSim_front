@@ -1810,7 +1810,7 @@ button {
 
 .team-kanban-board {
   display: grid;
-  grid-template-columns: repeat(7, minmax(15rem, 1fr));
+  grid-template-columns: repeat(5, minmax(15rem, 1fr));
   gap: 0.9rem;
   overflow-x: auto;
   padding-bottom: 0.35rem;
@@ -2664,7 +2664,7 @@ button {
   }
 
   .team-kanban-board {
-    grid-template-columns: repeat(7, minmax(13rem, 1fr));
+    grid-template-columns: repeat(5, minmax(13rem, 1fr));
   }
 
   .team-resources-grid,

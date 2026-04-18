@@ -110,14 +110,9 @@ const columns: KanbanColumn[] = [
     hint: 'Главврач выбирает приоритет и подразделение',
   },
   {
-    statuses: ['ASSIGNED'],
-    title: 'К руководителю',
-    hint: 'Руководитель подразделения назначает исполнителя',
-  },
-  {
-    statuses: ['READY_FOR_WORK'],
-    title: 'К исполнителю',
-    hint: 'Исполнитель берёт назначенную задачу в работу',
+    statuses: ['ASSIGNED', 'READY_FOR_WORK'],
+    title: 'На распределении',
+    hint: 'Ждёт руководителя подразделения или старта у исполнителя',
   },
   {
     statuses: ['IN_PROGRESS'],
@@ -125,14 +120,9 @@ const columns: KanbanColumn[] = [
     hint: 'Исполнитель выполняет задачу',
   },
   {
-    statuses: ['DEPARTMENT_REVIEW'],
-    title: 'Проверка подразделения',
-    hint: 'Первое согласование у руководителя',
-  },
-  {
-    statuses: ['CHIEF_DOCTOR_REVIEW'],
-    title: 'Финал у главврача',
-    hint: 'Главврач согласует закрытие',
+    statuses: ['DEPARTMENT_REVIEW', 'CHIEF_DOCTOR_REVIEW'],
+    title: 'На согласовании',
+    hint: 'Проверка у подразделения или финал у главврача',
   },
   {
     statuses: ['DONE'],
@@ -946,6 +936,7 @@ function TeamKanbanBoard({
                         <span className="kanban-card-title">{card.title}</span>
                         <span className="kanban-card-mini-meta">
                           <span>Этап {card.stageNumber}</span>
+                          <span>{statusLabels[card.status]}</span>
                           <span>{priorityLabel}</span>
                           <span>{responsibleDepartmentLabel}</span>
                           {card.selectedSolutionTitle ? <span>{formatReservationState(card)}</span> : null}
