@@ -98,6 +98,7 @@ export interface SessionStageSetting {
   stageNumber: number;
   durationMinutes: number;
   interactionMode: StageInteractionMode;
+  problemCount?: number | null;
 }
 
 export interface SessionRuntime {
@@ -151,6 +152,15 @@ export interface SessionTeamSummary {
 
 export interface GameSessionStageSettingsRequest {
   stages: SessionStageSetting[];
+}
+
+export interface SessionInventoryItem {
+  itemName: string;
+  quantity: number;
+}
+
+export interface GameSessionInventorySettingsRequest {
+  items: SessionInventoryItem[];
 }
 
 export interface SessionEconomySettings {
@@ -385,6 +395,8 @@ export interface GameSessionParticipantsResponse {
   participants: SessionParticipantSummary[];
   stages: SessionStageSetting[];
   sessionRuntime: SessionRuntime;
+  totalProblemCount: number;
+  inventoryItems: SessionInventoryItem[];
 }
 
 export interface FacilitatorTeamChatsResponse {

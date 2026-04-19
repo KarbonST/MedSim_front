@@ -32,7 +32,9 @@ import {
   renameGameSession,
   renameGameSessionTeam,
   resetGameSessionTimer,
+  randomizeGameSessionInventory,
   updateGameSessionEconomySettings,
+  updateGameSessionInventorySettings,
   saveGameSessionStages,
   selectGameSessionRuntimeStage,
   startGameSession,
@@ -47,6 +49,7 @@ import { createBasicAuthHeader, fetchStaffProfile } from './services/staffAuthAp
 import type {
   GameSessionStageSettingsRequest,
   GameSessionEconomyResponse,
+  GameSessionInventorySettingsRequest,
   GameSessionKanbanResponse,
   Mode,
   PlayerKanbanCardUpdateRequest,
@@ -91,6 +94,7 @@ function App() {
   const [facilitatorKanbanOverview, setFacilitatorKanbanOverview] = useState<GameSessionKanbanResponse | null>(null);
   const [facilitatorEconomyLoading, setFacilitatorEconomyLoading] = useState(false);
   const [facilitatorEconomySaving, setFacilitatorEconomySaving] = useState(false);
+  const [facilitatorInventorySaving, setFacilitatorInventorySaving] = useState(false);
   const [facilitatorAutoTeamLoading, setFacilitatorAutoTeamLoading] = useState(false);
   const [facilitatorRandomRoleLoading, setFacilitatorRandomRoleLoading] = useState(false);
   const [facilitatorRoleParticipantId, setFacilitatorRoleParticipantId] = useState<number | null>(null);
@@ -630,6 +634,51 @@ function App() {
     }
   };
 
+  const handleSaveInventorySettings = async (
+    sessionCode: string,
+    request: GameSessionInventorySettingsRequest,
+  ): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    setFacilitatorActionError('');
+    setFacilitatorInventorySaving(true);
+
+    try {
+      await updateGameSessionInventorySettings(sessionCode, request, staffAuthHeader);
+      await syncAfterSessionMutation(sessionCode);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось сохранить стартовый склад.',
+      );
+    } finally {
+      setFacilitatorInventorySaving(false);
+    }
+  };
+
+  const handleRandomizeInventory = async (sessionCode: string): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    setFacilitatorActionError('');
+    setFacilitatorInventorySaving(true);
+
+    try {
+      await randomizeGameSessionInventory(sessionCode, staffAuthHeader);
+      await syncAfterSessionMutation(sessionCode);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось случайно сформировать стартовый склад.',
+      );
+    } finally {
+      setFacilitatorInventorySaving(false);
+    }
+  };
+
   const handleAssignRandomRoles = async (sessionCode: string): Promise<void> => {
     if (!staffAuthHeader) {
       setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
@@ -1049,6 +1098,7 @@ function App() {
             kanbanOverview={facilitatorKanbanOverview}
             economyLoading={facilitatorEconomyLoading}
             economySaving={facilitatorEconomySaving}
+            inventorySaving={facilitatorInventorySaving}
             randomAssignmentLoading={facilitatorRandomRoleLoading}
             roleAssignmentParticipantId={facilitatorRoleParticipantId}
             error={facilitatorError}
@@ -1063,6 +1113,8 @@ function App() {
             onAssignParticipantTeam={handleAssignParticipantTeam}
             onSaveStages={handleSaveStages}
             onSaveEconomySettings={handleSaveEconomySettings}
+            onSaveInventorySettings={handleSaveInventorySettings}
+            onRandomizeInventory={handleRandomizeInventory}
             onAssignRandomRoles={handleAssignRandomRoles}
             onAssignManualRole={handleAssignManualRole}
             onSelectRuntimeStage={handleSelectRuntimeStage}

@@ -2,6 +2,7 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import type {
   GameSessionEconomyResponse,
+  GameSessionInventorySettingsRequest,
   GameSessionKanbanResponse,
   GameSessionParticipantsResponse,
   GameSessionStageSettingsRequest,
@@ -33,6 +34,7 @@ interface FacilitatorSessionPageProps {
   kanbanOverview: GameSessionKanbanResponse | null;
   economyLoading: boolean;
   economySaving: boolean;
+  inventorySaving: boolean;
   randomAssignmentLoading: boolean;
   roleAssignmentParticipantId: number | null;
   error: string;
@@ -67,6 +69,11 @@ interface FacilitatorSessionPageProps {
     startingBudget: string,
     stageTimeUnits: number,
   ) => void | Promise<void>;
+  onSaveInventorySettings: (
+    sessionCode: string,
+    request: GameSessionInventorySettingsRequest,
+  ) => void | Promise<void>;
+  onRandomizeInventory: (sessionCode: string) => void | Promise<void>;
   onAssignRandomRoles: (sessionCode: string) => void | Promise<void>;
   onAssignManualRole: (
     sessionCode: string,
@@ -320,6 +327,7 @@ function FacilitatorSessionPage({
   kanbanOverview,
   economyLoading,
   economySaving,
+  inventorySaving,
   randomAssignmentLoading,
   roleAssignmentParticipantId,
   error,
@@ -334,6 +342,8 @@ function FacilitatorSessionPage({
   onAssignParticipantTeam,
   onSaveStages,
   onSaveEconomySettings,
+  onSaveInventorySettings,
+  onRandomizeInventory,
   onAssignRandomRoles,
   onAssignManualRole,
   onSelectRuntimeStage,
@@ -628,6 +638,7 @@ function FacilitatorSessionPage({
               economySettings={economySettings}
               economyLoading={economyLoading}
               economySaving={economySaving}
+              inventorySaving={inventorySaving}
               teamRenameId={teamRenameId}
               teamAssignmentParticipantId={teamAssignmentParticipantId}
               roleAssignmentParticipantId={roleAssignmentParticipantId}
@@ -636,6 +647,8 @@ function FacilitatorSessionPage({
               onAssignParticipantTeam={onAssignParticipantTeam}
               onSaveStages={onSaveStages}
               onSaveEconomySettings={onSaveEconomySettings}
+              onSaveInventorySettings={onSaveInventorySettings}
+              onRandomizeInventory={onRandomizeInventory}
               onAssignRandomRoles={onAssignRandomRoles}
               onAssignManualRole={onAssignManualRole}
             />

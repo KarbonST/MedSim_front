@@ -2,6 +2,7 @@ import type {
   GameSessionCreateRequest,
   GameSessionEconomyResponse,
   GameSessionEconomySettingsUpdateRequest,
+  GameSessionInventorySettingsRequest,
   GameSessionKanbanResponse,
   GameSessionParticipantsResponse,
   GameSessionRenameRequest,
@@ -347,6 +348,62 @@ export async function saveGameSessionStages(
         response.status === 401
           ? 'Нужно заново войти под учётной записью ведущего.'
           : 'Не удалось сохранить настройки этапов. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionParticipantsResponse>;
+}
+
+export async function updateGameSessionInventorySettings(
+  sessionCode: string,
+  request: GameSessionInventorySettingsRequest,
+  authHeader: string,
+): Promise<GameSessionParticipantsResponse> {
+  const response = await fetch(
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/inventory`,
+    {
+      method: 'PUT',
+      headers: createAuthorizedHeaders(authHeader, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось сохранить стартовый склад. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionParticipantsResponse>;
+}
+
+export async function randomizeGameSessionInventory(
+  sessionCode: string,
+  authHeader: string,
+): Promise<GameSessionParticipantsResponse> {
+  const response = await fetch(
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/inventory/randomize`,
+    {
+      method: 'POST',
+      headers: createAuthorizedHeaders(authHeader),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось случайно сформировать стартовый склад. Попробуйте ещё раз.',
       ),
     );
   }

@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react';
 import { commonGameRoles, customGameRoleOption } from '../constants/gameRoles';
 import { stageInteractionModes } from '../constants/stageInteractionModes';
 import type {
+  GameSessionInventorySettingsRequest,
   GameSessionParticipantsResponse,
   GameSessionStageSettingsRequest,
   SessionEconomySettings,
+  SessionInventoryItem,
   SessionParticipantSummary,
   SessionStageSetting,
   SessionTeamSummary,
@@ -22,6 +24,7 @@ interface SessionSetupPanelProps {
   economySettings: SessionEconomySettings | null;
   economyLoading: boolean;
   economySaving: boolean;
+  inventorySaving: boolean;
   teamRenameId: number | null;
   teamAssignmentParticipantId: number | null;
   roleAssignmentParticipantId: number | null;
@@ -45,6 +48,11 @@ interface SessionSetupPanelProps {
     startingBudget: string,
     stageTimeUnits: number,
   ) => void | Promise<void>;
+  onSaveInventorySettings: (
+    sessionCode: string,
+    request: GameSessionInventorySettingsRequest,
+  ) => void | Promise<void>;
+  onRandomizeInventory: (sessionCode: string) => void | Promise<void>;
   onAssignRandomRoles: (sessionCode: string) => void | Promise<void>;
   onAssignManualRole: (
     sessionCode: string,
@@ -65,20 +73,41 @@ interface RoleParticipantGroup {
   participants: SessionParticipantSummary[];
 }
 
-function createDefaultStages(count: number): SessionStageSetting[] {
+function buildEvenProblemDistribution(totalProblemCount: number, stageCount: number): number[] {
+  if (stageCount < 1) {
+    return [];
+  }
+
+  const baseCount = Math.floor(totalProblemCount / stageCount);
+  const remainder = totalProblemCount % stageCount;
+
+  return Array.from({ length: stageCount }, (_, index) => baseCount + (index < remainder ? 1 : 0));
+}
+
+function createDefaultStages(count: number, totalProblemCount: number): SessionStageSetting[] {
+  const problemDistribution = buildEvenProblemDistribution(totalProblemCount, count);
+
   return Array.from({ length: count }, (_, index) => ({
     stageNumber: index + 1,
     durationMinutes: 15,
     interactionMode: index === 0 ? 'CHAT_WITH_PROBLEMS' : 'CHAT_AND_KANBAN',
+    problemCount: problemDistribution[index] ?? 0,
   }));
 }
 
 function buildStageDrafts(session: GameSessionParticipantsResponse): SessionStageSetting[] {
   if (!session.stages.length) {
-    return createDefaultStages(4);
+    return createDefaultStages(4, session.totalProblemCount);
   }
 
   return [...session.stages].sort((left, right) => left.stageNumber - right.stageNumber);
+}
+
+function buildInventoryDrafts(items: SessionInventoryItem[]): Record<string, string> {
+  return items.reduce<Record<string, string>>((drafts, item) => {
+    drafts[item.itemName] = String(item.quantity);
+    return drafts;
+  }, {});
 }
 
 function buildManualRoleDrafts(
@@ -163,6 +192,7 @@ function SessionSetupPanel({
   economySettings,
   economyLoading,
   economySaving,
+  inventorySaving,
   teamRenameId,
   teamAssignmentParticipantId,
   roleAssignmentParticipantId,
@@ -171,6 +201,8 @@ function SessionSetupPanel({
   onAssignParticipantTeam,
   onSaveStages,
   onSaveEconomySettings,
+  onSaveInventorySettings,
+  onRandomizeInventory,
   onAssignRandomRoles,
   onAssignManualRole,
 }: SessionSetupPanelProps) {
@@ -184,12 +216,20 @@ function SessionSetupPanel({
   const [participantTeamDrafts, setParticipantTeamDrafts] = useState<Record<number, string>>(() => (
     buildParticipantTeamDrafts(session.participants)
   ));
+  const [manualProblemDistribution, setManualProblemDistribution] = useState(false);
+  const [inventoryDrafts, setInventoryDrafts] = useState<Record<string, string>>(() => (
+    buildInventoryDrafts(session.inventoryItems)
+  ));
   const [expandedRoleParticipantIds, setExpandedRoleParticipantIds] = useState<Set<number>>(() => new Set());
   const [collapsedTeamRoleGroupKeys, setCollapsedTeamRoleGroupKeys] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     setStageDrafts(buildStageDrafts(session));
-  }, [session.sessionId, session.stages]);
+  }, [session.sessionId, session.stages, session.totalProblemCount]);
+
+  useEffect(() => {
+    setManualProblemDistribution(false);
+  }, [session.sessionId]);
 
   useEffect(() => {
     setManualRoleDrafts(buildManualRoleDrafts(session.participants));
@@ -220,6 +260,10 @@ function SessionSetupPanel({
   }, [session.sessionId, session.teams]);
 
   useEffect(() => {
+    setInventoryDrafts(buildInventoryDrafts(session.inventoryItems));
+  }, [session.sessionId, session.inventoryItems]);
+
+  useEffect(() => {
     if (!economySettings) {
       return;
     }
@@ -239,6 +283,19 @@ function SessionSetupPanel({
     ? normalizedDraftBudget !== normalizedCurrentBudget || parsedStageTimeUnits !== economySettings.stageTimeUnits
     : false;
   const teamRoleParticipantGroups = buildTeamRoleParticipantGroups(session.participants, session.teams);
+  const totalProblemCount = session.totalProblemCount ?? 0;
+  const autoProblemDistribution = buildEvenProblemDistribution(totalProblemCount, stageDrafts.length);
+  const visibleProblemDistribution = manualProblemDistribution
+    ? stageDrafts.map((stage) => stage.problemCount ?? 0)
+    : autoProblemDistribution;
+  const distributedProblemCount = visibleProblemDistribution.reduce((sum, count) => sum + count, 0);
+  const remainingProblemCount = totalProblemCount - distributedProblemCount;
+  const isProblemDistributionValid = !manualProblemDistribution || remainingProblemCount === 0;
+  const inventoryItems = session.inventoryItems ?? [];
+  const isInventoryDraftValid = inventoryItems.every((item) => {
+    const value = Number.parseInt(inventoryDrafts[item.itemName] ?? '', 10);
+    return !Number.isNaN(value) && value >= 0;
+  });
 
   const handleSaveEconomy = async (): Promise<void> => {
     if (!economySettings || !isEconomyDraftValid) {
@@ -259,17 +316,30 @@ function SessionSetupPanel({
       return;
     }
 
+    if (!manualProblemDistribution) {
+      setStageDrafts(createDefaultStages(requestedCount, totalProblemCount));
+      return;
+    }
+
     setStageDrafts((current) => {
-      if (requestedCount === current.length) {
-        return current;
-      }
+      const nextDistribution = buildEvenProblemDistribution(totalProblemCount, requestedCount);
+      return Array.from({ length: requestedCount }, (_, index) => {
+        const existingStage = current[index];
 
-      if (requestedCount < current.length) {
-        return current.slice(0, requestedCount);
-      }
+        if (existingStage) {
+          return {
+            ...existingStage,
+            stageNumber: index + 1,
+          };
+        }
 
-      const extension = createDefaultStages(requestedCount).slice(current.length);
-      return [...current, ...extension];
+        return {
+          stageNumber: index + 1,
+          durationMinutes: 15,
+          interactionMode: index === 0 ? 'CHAT_WITH_PROBLEMS' : 'CHAT_AND_KANBAN',
+          problemCount: nextDistribution[index] ?? 0,
+        };
+      });
     });
   };
 
@@ -291,11 +361,44 @@ function SessionSetupPanel({
   };
 
   const handleSaveStages = async (): Promise<void> => {
+    if (!isProblemDistributionValid) {
+      return;
+    }
+
     await onSaveStages(session.sessionCode, {
       stages: stageDrafts.map((stage, index) => ({
         stageNumber: index + 1,
         durationMinutes: stage.durationMinutes,
         interactionMode: stage.interactionMode,
+        ...(manualProblemDistribution ? { problemCount: stage.problemCount ?? 0 } : {}),
+      })),
+    });
+  };
+
+  const toggleManualProblemDistribution = (): void => {
+    if (manualProblemDistribution) {
+      setStageDrafts(createDefaultStages(stageDrafts.length, totalProblemCount));
+    }
+
+    setManualProblemDistribution((current) => !current);
+  };
+
+  const updateInventoryDraft = (itemName: string, quantity: string): void => {
+    setInventoryDrafts((current) => ({
+      ...current,
+      [itemName]: quantity,
+    }));
+  };
+
+  const handleSaveInventory = async (): Promise<void> => {
+    if (!isInventoryDraftValid) {
+      return;
+    }
+
+    await onSaveInventorySettings(session.sessionCode, {
+      items: inventoryItems.map((item) => ({
+        itemName: item.itemName,
+        quantity: Number.parseInt(inventoryDrafts[item.itemName] ?? '0', 10),
       })),
     });
   };
@@ -765,10 +868,33 @@ function SessionSetupPanel({
             onClick={() => {
               void handleSaveStages();
             }}
-            disabled={!isLobby || savingStages || loading}
+            disabled={!isLobby || savingStages || loading || !isProblemDistributionValid}
           >
             {savingStages ? 'Сохранение...' : 'Сохранить этапы'}
           </button>
+
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={toggleManualProblemDistribution}
+            disabled={!isLobby || savingStages}
+          >
+            {manualProblemDistribution ? 'Автоматическое распределение' : 'Ручное распределение задач'}
+          </button>
+        </div>
+
+        <div className="waiting-note compact-note">
+          <p>
+            {manualProblemDistribution
+              ? `Распределено ${distributedProblemCount} из ${totalProblemCount}. ${
+                remainingProblemCount === 0
+                  ? 'Можно сохранять.'
+                  : remainingProblemCount > 0
+                    ? `Осталось распределить ${remainingProblemCount}.`
+                    : `Лишних задач: ${Math.abs(remainingProblemCount)}.`
+              }`
+              : `Задачи распределятся автоматически и почти поровну: ${visibleProblemDistribution.join(' / ')}.`}
+          </p>
         </div>
 
         {!isLobby ? (
@@ -778,7 +904,7 @@ function SessionSetupPanel({
         ) : null}
 
         <div className="stage-editors">
-          {stageDrafts.map((stage) => (
+          {stageDrafts.map((stage, index) => (
             <article key={stage.stageNumber} className="stage-editor-card">
               <div className="stage-editor-header">
                 <strong>Этап {stage.stageNumber}</strong>
@@ -827,11 +953,93 @@ function SessionSetupPanel({
                     ))}
                   </select>
                 </label>
+
+                <label className="field compact-field">
+                  <span>Задач на этапе</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={manualProblemDistribution ? stage.problemCount ?? 0 : autoProblemDistribution[index] ?? 0}
+                    onChange={(event) => {
+                      const nextValue = Number.parseInt(event.target.value, 10);
+
+                      if (Number.isNaN(nextValue) || nextValue < 0) {
+                        return;
+                      }
+
+                      updateStageDraft(stage.stageNumber, 'problemCount', nextValue);
+                    }}
+                    disabled={!isLobby || savingStages || !manualProblemDistribution}
+                  />
+                </label>
               </div>
 
               <p className="stage-editor-description">
                 {stageInteractionModes.find((mode) => mode.value === stage.interactionMode)?.hint}
               </p>
+            </article>
+          ))}
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        kicker="Ресурсы"
+        title="Стартовый склад"
+        defaultExpanded={false}
+        badge={(
+          <span className="status-pill subtle-status-pill">
+            Позиций: {inventoryItems.length}
+          </span>
+        )}
+      >
+        <div className="waiting-note">
+          <p>
+            Склад формируется одинаковым для всех команд. Можно оставить случайную генерацию или вручную задать количество
+            каждой позиции до старта игры.
+          </p>
+        </div>
+
+        <div className="setup-toolbar">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              void onRandomizeInventory(session.sessionCode);
+            }}
+            disabled={!isLobby || inventorySaving || loading}
+          >
+            {inventorySaving ? 'Обновление...' : 'Сформировать случайно'}
+          </button>
+
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => {
+              void handleSaveInventory();
+            }}
+            disabled={!isLobby || inventorySaving || loading || !isInventoryDraftValid}
+          >
+            {inventorySaving ? 'Сохранение...' : 'Сохранить склад'}
+          </button>
+        </div>
+
+        {!isInventoryDraftValid ? (
+          <p className="form-error">Количество на складе должно быть целым числом от 0 и выше.</p>
+        ) : null}
+
+        <div className="team-inventory-grid">
+          {inventoryItems.map((item) => (
+            <article key={item.itemName} className="inventory-item-card">
+              <label className="field compact-field">
+                <span>{item.itemName}</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={inventoryDrafts[item.itemName] ?? '0'}
+                  onChange={(event) => updateInventoryDraft(item.itemName, event.target.value)}
+                  disabled={!isLobby || inventorySaving}
+                />
+              </label>
             </article>
           ))}
         </div>
