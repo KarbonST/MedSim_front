@@ -73,6 +73,8 @@ interface RoleParticipantGroup {
   participants: SessionParticipantSummary[];
 }
 
+const DEFAULT_SESSION_STAGE_COUNT = 3;
+
 function buildEvenProblemDistribution(totalProblemCount: number, stageCount: number): number[] {
   if (stageCount < 1) {
     return [];
@@ -97,7 +99,7 @@ function createDefaultStages(count: number, totalProblemCount: number): SessionS
 
 function buildStageDrafts(session: GameSessionParticipantsResponse): SessionStageSetting[] {
   if (!session.stages.length) {
-    return createDefaultStages(4, session.totalProblemCount);
+    return createDefaultStages(DEFAULT_SESSION_STAGE_COUNT, session.totalProblemCount);
   }
 
   return [...session.stages].sort((left, right) => left.stageNumber - right.stageNumber);
