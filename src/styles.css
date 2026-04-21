@@ -1196,6 +1196,13 @@ button {
   margin-top: 10px;
 }
 
+.fixed-stage-note {
+  border-color: rgba(76, 128, 104, 0.22);
+  background:
+    linear-gradient(135deg, rgba(237, 248, 241, 0.94), rgba(255, 255, 255, 0.82)),
+    radial-gradient(circle at 100% 0%, rgba(167, 210, 184, 0.18), transparent 32%);
+}
+
 .workspace-members-list {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -1772,6 +1779,14 @@ button {
   line-height: 1.35;
 }
 
+.hospital-problem-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  justify-content: space-between;
+  align-items: start;
+}
+
 .hospital-problem-card span {
   display: block;
   margin-top: 0.35rem;
@@ -1794,6 +1809,47 @@ button {
 .hospital-problem-card--in_progress {
   border-color: rgba(76, 128, 104, 0.34);
   background: rgba(236, 247, 240, 0.94);
+}
+
+.hospital-room-alert {
+  display: grid;
+  gap: 0.28rem;
+  margin-top: 1rem;
+  padding: 0.78rem 0.86rem;
+  border: 1px solid rgba(181, 78, 62, 0.2);
+  border-radius: 1rem;
+  background:
+    linear-gradient(135deg, rgba(255, 244, 240, 0.94), rgba(255, 255, 255, 0.82)),
+    radial-gradient(circle at 0% 0%, rgba(181, 78, 62, 0.14), transparent 34%);
+}
+
+.hospital-room-alert strong {
+  color: #7b3f34;
+  font-size: 0.84rem;
+}
+
+.hospital-room-alert span {
+  color: #8e5b50;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.hospital-problem-crisis-badge {
+  display: inline-flex !important;
+  align-items: center;
+  margin-top: 0 !important;
+  padding: 0.26rem 0.54rem;
+  border-radius: 999px;
+  background: rgba(181, 78, 62, 0.12);
+  color: #8b4b3c !important;
+  font-size: 0.72rem !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+}
+
+.hospital-problem-escalation {
+  color: #8b4b3c !important;
 }
 
 .hospital-problem-actions {
@@ -1910,6 +1966,35 @@ button {
   background:
     linear-gradient(135deg, rgba(255, 249, 232, 0.92), rgba(245, 252, 247, 0.82)),
     radial-gradient(circle at 0% 0%, rgba(192, 141, 67, 0.16), transparent 30%);
+}
+
+.kanban-stage-crisis-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: start;
+  margin-bottom: 0.9rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(181, 78, 62, 0.2);
+  border-radius: 1rem;
+  background:
+    linear-gradient(135deg, rgba(255, 244, 240, 0.94), rgba(255, 255, 255, 0.82)),
+    radial-gradient(circle at 100% 0%, rgba(181, 78, 62, 0.16), transparent 32%);
+}
+
+.kanban-stage-crisis-panel strong {
+  display: block;
+  margin-top: 0.14rem;
+  color: #7b3f34;
+  font-size: 1rem;
+}
+
+.kanban-stage-crisis-panel p {
+  margin: 0.22rem 0 0;
+  color: #8a5a50;
+  font-size: 0.84rem;
+  font-weight: 760;
+  line-height: 1.4;
 }
 
 .chat-round-note {
@@ -2237,6 +2322,11 @@ button {
   background: rgba(232, 246, 237, 0.9);
 }
 
+.kanban-crisis-badge {
+  background: rgba(181, 78, 62, 0.12) !important;
+  color: #8b4b3c !important;
+}
+
 .kanban-card-details {
   display: grid;
   gap: 0.75rem;
@@ -2320,6 +2410,31 @@ button {
 .kanban-card-history p {
   color: #789084 !important;
   font-size: 0.78rem !important;
+}
+
+.kanban-card-escalation {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.78rem 0.82rem;
+  border: 1px solid rgba(181, 78, 62, 0.22);
+  border-radius: 0.95rem;
+  background:
+    linear-gradient(135deg, rgba(255, 244, 240, 0.94), rgba(255, 255, 255, 0.82)),
+    radial-gradient(circle at 0% 0%, rgba(181, 78, 62, 0.12), transparent 34%);
+}
+
+.kanban-card-escalation strong {
+  color: #7b3f34;
+  font-size: 0.84rem;
+}
+
+.kanban-card-escalation p,
+.kanban-card-escalation span {
+  margin: 0;
+  color: #8a5a50 !important;
+  font-size: 0.78rem !important;
+  font-weight: 800 !important;
+  line-height: 1.35 !important;
 }
 
 .kanban-card-actions {
@@ -2718,6 +2833,15 @@ button {
   .kanban-role-panel {
     grid-template-columns: 1fr;
     align-items: stretch;
+  }
+
+  .hospital-problem-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .kanban-stage-crisis-panel {
+    grid-template-columns: 1fr;
   }
 
   .kanban-scope-controls {

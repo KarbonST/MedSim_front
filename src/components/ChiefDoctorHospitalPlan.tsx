@@ -29,6 +29,7 @@ function ChiefDoctorHospitalPlan({ rooms, emptyText = 'Экономика ком
     () => rooms.find((room) => room.roomStateId === selectedRoomStateId) ?? rooms[0] ?? null,
     [rooms, selectedRoomStateId],
   );
+  const escalatedProblems = selectedRoom?.problems.filter((problem) => problem.escalated) ?? [];
 
   if (!rooms.length) {
     return (
@@ -130,6 +131,10 @@ function ChiefDoctorHospitalPlan({ rooms, emptyText = 'Экономика ком
                 <dd>{selectedRoom.activeProblemCount}</dd>
               </div>
               <div>
+                <dt>Кризисов 3 этапа</dt>
+                <dd>{escalatedProblems.length}</dd>
+              </div>
+              <div>
                 <dt>Базовый доход кабинета</dt>
                 <dd>{Number(selectedRoom.baseIncome).toFixed(2)}</dd>
               </div>
@@ -148,18 +153,34 @@ function ChiefDoctorHospitalPlan({ rooms, emptyText = 'Экономика ком
                 </dd>
               </div>
             </dl>
+            {escalatedProblems.length ? (
+              <div className="hospital-room-alert">
+                <strong>Есть задачи с эскалацией 3 этапа.</strong>
+                <span>Их лучше закрыть в первую очередь: они могут дать дополнительный штраф по этапу.</span>
+              </div>
+            ) : null}
             <div className="hospital-room-problems">
               <p className="section-kicker">Проблемы кабинета</p>
               <div className="hospital-problem-list">
                 {selectedRoom.problems.map((problem) => (
                   <article key={problem.problemStateId} className={`hospital-problem-card hospital-problem-card--${problem.status.toLowerCase()}`}>
+                    <div className="hospital-problem-card-header">
+                      <strong>{problem.title}</strong>
+                      {problem.escalated && problem.escalationTitle ? (
+                        <span className="hospital-problem-crisis-badge">{problem.escalationTitle}</span>
+                      ) : null}
+                    </div>
                     <div>
-                      <strong>#{problem.problemNumber} {problem.title}</strong>
                       <span>
                         Этап {problem.stageNumber} · {problemSeverityLabels[problem.severity]} проблема ·
                         {' '}стоимость {Number(problem.budgetCost).toFixed(2)} / {problem.timeCost} вр. ·
                         {' '}штраф {Number(problem.ignorePenalty).toFixed(2)} · статус {problemStatusLabels[problem.status]}
                       </span>
+                      {problem.escalated && problem.escalationPenaltyHint ? (
+                        <span className="hospital-problem-escalation">
+                          {problem.escalationPenaltyHint}
+                        </span>
+                      ) : null}
                       {problem.requiredItemName && problem.requiredItemQuantity > 0 ? (
                         <span>
                           Нужно: {problem.requiredItemName}, {problem.requiredItemQuantity} шт.

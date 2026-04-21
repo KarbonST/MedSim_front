@@ -1,4 +1,3 @@
-import type { ChangeEvent } from 'react';
 import { useEffect, useState } from 'react';
 import { commonGameRoles, customGameRoleOption } from '../constants/gameRoles';
 import { stageInteractionModes } from '../constants/stageInteractionModes';
@@ -86,10 +85,10 @@ function buildEvenProblemDistribution(totalProblemCount: number, stageCount: num
   return Array.from({ length: stageCount }, (_, index) => baseCount + (index < remainder ? 1 : 0));
 }
 
-function createDefaultStages(count: number, totalProblemCount: number): SessionStageSetting[] {
-  const problemDistribution = buildEvenProblemDistribution(totalProblemCount, count);
+function createDefaultStages(totalProblemCount: number): SessionStageSetting[] {
+  const problemDistribution = buildEvenProblemDistribution(totalProblemCount, DEFAULT_SESSION_STAGE_COUNT);
 
-  return Array.from({ length: count }, (_, index) => ({
+  return Array.from({ length: DEFAULT_SESSION_STAGE_COUNT }, (_, index) => ({
     stageNumber: index + 1,
     durationMinutes: 15,
     interactionMode: index === 0 ? 'CHAT_WITH_PROBLEMS' : 'CHAT_AND_KANBAN',
@@ -99,7 +98,7 @@ function createDefaultStages(count: number, totalProblemCount: number): SessionS
 
 function buildStageDrafts(session: GameSessionParticipantsResponse): SessionStageSetting[] {
   if (!session.stages.length) {
-    return createDefaultStages(DEFAULT_SESSION_STAGE_COUNT, session.totalProblemCount);
+    return createDefaultStages(session.totalProblemCount);
   }
 
   return [...session.stages].sort((left, right) => left.stageNumber - right.stageNumber);
@@ -286,7 +285,7 @@ function SessionSetupPanel({
     : false;
   const teamRoleParticipantGroups = buildTeamRoleParticipantGroups(session.participants, session.teams);
   const totalProblemCount = session.totalProblemCount ?? 0;
-  const autoProblemDistribution = buildEvenProblemDistribution(totalProblemCount, stageDrafts.length);
+  const autoProblemDistribution = buildEvenProblemDistribution(totalProblemCount, DEFAULT_SESSION_STAGE_COUNT);
   const visibleProblemDistribution = manualProblemDistribution
     ? stageDrafts.map((stage) => stage.problemCount ?? 0)
     : autoProblemDistribution;
@@ -309,40 +308,6 @@ function SessionSetupPanel({
       parsedBudget.toFixed(2),
       parsedStageTimeUnits,
     );
-  };
-
-  const handleStageCountChange = (event: ChangeEvent<HTMLInputElement>): void => {
-    const requestedCount = Number.parseInt(event.target.value, 10);
-
-    if (Number.isNaN(requestedCount) || requestedCount < 1) {
-      return;
-    }
-
-    if (!manualProblemDistribution) {
-      setStageDrafts(createDefaultStages(requestedCount, totalProblemCount));
-      return;
-    }
-
-    setStageDrafts((current) => {
-      const nextDistribution = buildEvenProblemDistribution(totalProblemCount, requestedCount);
-      return Array.from({ length: requestedCount }, (_, index) => {
-        const existingStage = current[index];
-
-        if (existingStage) {
-          return {
-            ...existingStage,
-            stageNumber: index + 1,
-          };
-        }
-
-        return {
-          stageNumber: index + 1,
-          durationMinutes: 15,
-          interactionMode: index === 0 ? 'CHAT_WITH_PROBLEMS' : 'CHAT_AND_KANBAN',
-          problemCount: nextDistribution[index] ?? 0,
-        };
-      });
-    });
   };
 
   const updateStageDraft = (
@@ -379,7 +344,7 @@ function SessionSetupPanel({
 
   const toggleManualProblemDistribution = (): void => {
     if (manualProblemDistribution) {
-      setStageDrafts(createDefaultStages(stageDrafts.length, totalProblemCount));
+      setStageDrafts(createDefaultStages(totalProblemCount));
     }
 
     setManualProblemDistribution((current) => !current);
@@ -848,21 +813,14 @@ function SessionSetupPanel({
         defaultExpanded={false}
         badge={(
           <span className="status-pill subtle-status-pill">
-            Этапов: {stageDrafts.length}
+            Этапов: {DEFAULT_SESSION_STAGE_COUNT}
           </span>
         )}
       >
         <div className="setup-toolbar">
-          <label className="field compact-field stage-count-field">
-            <span>Количество этапов</span>
-            <input
-              type="number"
-              min="1"
-              value={stageDrafts.length}
-              onChange={handleStageCountChange}
-              disabled={!isLobby || savingStages}
-            />
-          </label>
+          <div className="waiting-note waiting-note-inline fixed-stage-note">
+            <p>Количество этапов зафиксировано: 3. Здесь можно менять только длительность и распределение задач.</p>
+          </div>
 
           <button
             type="button"

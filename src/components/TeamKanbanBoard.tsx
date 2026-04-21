@@ -176,6 +176,7 @@ function TeamKanbanBoard({
   }));
   const safeMobileColumnIndex = Math.min(mobileColumnIndex, boardColumns.length - 1);
   const activeMobileColumn = boardColumns[safeMobileColumnIndex];
+  const finalStageCrisisVisible = Boolean(board?.finalStageCrisisTitle);
 
   const toggleCard = (cardId: number): void => {
     setExpandedCardIds((current) => {
@@ -705,6 +706,7 @@ function TeamKanbanBoard({
                     <span>{statusLabels[card.status]}</span>
                     <span>{priorityLabel}</span>
                     <span>{responsibleDepartmentLabel}</span>
+                    {renderEscalationBadge(card)}
                   </span>
                 </button>
 
@@ -714,6 +716,7 @@ function TeamKanbanBoard({
                       {severityLabels[card.severity]} проблема · кабинет {card.roomCode}. Отложенная задача вернётся
                       в общий пул при переходе на следующий этап.
                     </p>
+                    {renderEscalationPanel(card)}
                     <dl className="kanban-card-facts">
                       <div>
                         <dt>Подразделение</dt>
@@ -782,6 +785,7 @@ function TeamKanbanBoard({
             <span>{statusLabels[card.status]}</span>
             <span>{priorityLabel}</span>
             <span>{responsibleDepartmentLabel}</span>
+            {renderEscalationBadge(card)}
             {card.selectedSolutionTitle ? <span>{formatReservationState(card)}</span> : null}
             {card.assigneeName ? <span>{card.assigneeName}</span> : null}
           </span>
@@ -792,6 +796,7 @@ function TeamKanbanBoard({
             <p>
               {severityLabels[card.severity]} проблема · {statusLabels[card.status]} · кабинет {card.roomCode}
             </p>
+            {renderEscalationPanel(card)}
             <dl className="kanban-card-facts">
               <div>
                 <dt>Подразделение</dt>
@@ -872,6 +877,41 @@ function TeamKanbanBoard({
     showingAllCards: canSwitchCardScope && showAllCards,
   });
 
+  const renderFinalStageCrisisPanel = () => {
+    if (!finalStageCrisisVisible) {
+      return null;
+    }
+
+    return (
+      <div className="kanban-stage-crisis-panel">
+        <div>
+          <span className="section-kicker">Кризис 3 этапа</span>
+          <strong>{board?.finalStageCrisisTitle}</strong>
+          <p>{board?.finalStageCrisisDescription}</p>
+        </div>
+        <span className="status-pill subtle-status-pill">
+          Эскалаций: {board?.activeEscalationCount ?? 0}
+        </span>
+      </div>
+    );
+  };
+
+  const renderEscalationBadge = (card: TeamKanbanCardItem) => (
+    card.escalated && card.escalationTitle ? (
+      <span className="kanban-crisis-badge">{card.escalationTitle}</span>
+    ) : null
+  );
+
+  const renderEscalationPanel = (card: TeamKanbanCardItem) => (
+    card.escalated ? (
+      <div className="kanban-card-escalation">
+        <strong>{card.escalationTitle}</strong>
+        {card.escalationDescription ? <p>{card.escalationDescription}</p> : null}
+        {card.escalationPenaltyHint ? <span>{card.escalationPenaltyHint}</span> : null}
+      </div>
+    ) : null
+  );
+
   if (!cards.length) {
     return (
       <div className="waiting-note compact-note">
@@ -901,6 +941,7 @@ function TeamKanbanBoard({
             ) : null}
           </div>
         </div>
+        {renderFinalStageCrisisPanel()}
 
         <div className="team-kanban-flat-list">
           {workflowVisibleCards.map((card) => {
@@ -931,6 +972,7 @@ function TeamKanbanBoard({
                     <span>{statusLabels[card.status]}</span>
                     <span>{priorityLabel}</span>
                     <span>{responsibleDepartmentLabel}</span>
+                    {renderEscalationBadge(card)}
                     {card.selectedSolutionTitle ? <span>{formatReservationState(card)}</span> : null}
                     {card.assigneeName ? <span>{card.assigneeName}</span> : null}
                   </span>
@@ -942,6 +984,7 @@ function TeamKanbanBoard({
                       {severityLabels[card.severity]} проблема · кабинет {card.roomCode}. В чат-раунде нет колонок, поэтому
                       состояние задачи приходится восстанавливать по списку и сообщениям.
                     </p>
+                    {renderEscalationPanel(card)}
                     <dl className="kanban-card-facts">
                       <div>
                         <dt>Статус</dt>
@@ -1011,6 +1054,7 @@ function TeamKanbanBoard({
           ) : null}
         </div>
       </div>
+      {renderFinalStageCrisisPanel()}
       <div className="team-kanban-board">
         {boardColumns.map((column) => renderBoardColumn(column, column.cards))}
       </div>

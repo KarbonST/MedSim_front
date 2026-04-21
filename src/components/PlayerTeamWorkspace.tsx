@@ -198,7 +198,7 @@ function PlayerTeamWorkspaceScreen({
           badge={<span className="status-pill subtle-status-pill">Главный врач</span>}
         >
           <div className="waiting-note compact-note chief-doctor-plan-note">
-            <p>На плане видны кабинеты поликлиники, цвет их состояния и количество проблем в каждом помещении.</p>
+            <p>На плане видны кабинеты, их текущее состояние, количество проблем и критичные задачи 3 этапа, если они появились.</p>
           </div>
           <ChiefDoctorHospitalPlan
             rooms={workspace.teamEconomy?.rooms ?? []}
@@ -372,7 +372,7 @@ function PlayerTeamWorkspaceScreen({
             </div>
           ) : (
             <div className="waiting-note compact-note">
-              <p>Пока новых уведомлений по задачам нет. Когда вам назначат задачу или она придёт на согласование, это появится здесь.</p>
+              <p>Пока новых уведомлений нет. Когда по вашим задачам появятся назначения, возвраты, согласование или закрытие, это отобразится здесь.</p>
             </div>
           )}
         </CollapsibleSection>

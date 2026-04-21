@@ -68,6 +68,8 @@ export type StageInteractionMode = 'CHAT_WITH_PROBLEMS' | 'CHAT_AND_KANBAN';
 export type SessionTimerStatus = 'STOPPED' | 'RUNNING' | 'PAUSED';
 export type ProblemSeverity = 'MINOR' | 'SERIOUS' | 'CRITICAL';
 export type TeamProblemStatus = 'ACTIVE' | 'IN_PROGRESS' | 'RESOLVED' | 'IGNORED';
+export type ProblemEscalationType = 'REPUTATION_INCIDENT' | 'INSPECTION_RISK' | 'OPERATIONS_DISRUPTION';
+export type FinalStageCrisisType = 'REPUTATIONAL_PRESSURE' | 'INSPECTION_PRESSURE' | 'PEAK_LOAD';
 export type KanbanCardStatus =
   | 'REGISTERED'
   | 'ASSIGNED'
@@ -92,7 +94,9 @@ export type KanbanCardHistoryEventType =
   | 'CHIEF_DOCTOR_APPROVED'
   | 'TASK_HELD'
   | 'HOLD_RELEASED'
-  | 'RETURNED_TO_STAGE';
+  | 'RETURNED_TO_STAGE'
+  | 'STAGE_CRISIS_ESCALATED'
+  | 'STAGE_CRISIS_RESOLVED';
 
 export interface SessionStageSetting {
   stageNumber: number;
@@ -180,6 +184,11 @@ export interface TeamProblemEconomyItem {
   requiredItemQuantity: number;
   ignorePenalty: number;
   penaltyWeight: number;
+  escalated: boolean;
+  escalationType: ProblemEscalationType | null;
+  escalationTitle: string | null;
+  escalationDescription: string | null;
+  escalationPenaltyHint: string | null;
   status: TeamProblemStatus;
 }
 
@@ -260,6 +269,11 @@ export interface TeamKanbanCardItem {
   reservedItemName: string | null;
   reservedItemQuantity: number;
   resourcesSpent: boolean;
+  escalated: boolean;
+  escalationType: ProblemEscalationType | null;
+  escalationTitle: string | null;
+  escalationDescription: string | null;
+  escalationPenaltyHint: string | null;
   responsibleDepartment: KanbanResponsibleDepartment | null;
   status: KanbanCardStatus;
   assigneeParticipantId: number | null;
@@ -318,6 +332,10 @@ export interface PlayerKanbanSolutionSelectionRequest {
 }
 
 export interface TeamKanbanBoardItem {
+  finalStageCrisisType: FinalStageCrisisType | null;
+  finalStageCrisisTitle: string | null;
+  finalStageCrisisDescription: string | null;
+  activeEscalationCount: number | null;
   cards: TeamKanbanCardItem[];
 }
 
