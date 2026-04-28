@@ -24,6 +24,7 @@ import {
   autoAssignTeams,
   createGameSession,
   deleteGameSession,
+  fetchGameSessionAnalytics,
   fetchGameSessionEconomy,
   fetchGameSessionKanban,
   finishGameSession,
@@ -47,6 +48,7 @@ import {
 } from './services/playerSessionsApi';
 import { createBasicAuthHeader, fetchStaffProfile } from './services/staffAuthApi';
 import type {
+  GameSessionAnalyticsResponse,
   GameSessionStageSettingsRequest,
   GameSessionEconomyResponse,
   GameSessionInventorySettingsRequest,
@@ -92,7 +94,9 @@ function App() {
   const [facilitatorEconomySettings, setFacilitatorEconomySettings] = useState<SessionEconomySettings | null>(null);
   const [facilitatorEconomyOverview, setFacilitatorEconomyOverview] = useState<GameSessionEconomyResponse | null>(null);
   const [facilitatorKanbanOverview, setFacilitatorKanbanOverview] = useState<GameSessionKanbanResponse | null>(null);
+  const [facilitatorAnalyticsOverview, setFacilitatorAnalyticsOverview] = useState<GameSessionAnalyticsResponse | null>(null);
   const [facilitatorEconomyLoading, setFacilitatorEconomyLoading] = useState(false);
+  const [facilitatorAnalyticsLoading, setFacilitatorAnalyticsLoading] = useState(false);
   const [facilitatorEconomySaving, setFacilitatorEconomySaving] = useState(false);
   const [facilitatorInventorySaving, setFacilitatorInventorySaving] = useState(false);
   const [facilitatorAutoTeamLoading, setFacilitatorAutoTeamLoading] = useState(false);
@@ -259,6 +263,29 @@ function App() {
   ]);
 
   useEffect(() => {
+    if (!isFacilitatorWorkspaceOpen || !staffAuthHeader || !facilitatorSessionCode.trim()) {
+      return;
+    }
+
+    if (
+      overviewState.session?.sessionCode !== facilitatorSessionCode
+      || overviewState.session.sessionStatus !== 'FINISHED'
+    ) {
+      setFacilitatorAnalyticsOverview(null);
+      setFacilitatorAnalyticsLoading(false);
+      return;
+    }
+
+    void loadAnalyticsOverview(facilitatorSessionCode, staffAuthHeader);
+  }, [
+    isFacilitatorWorkspaceOpen,
+    staffAuthHeader,
+    facilitatorSessionCode,
+    overviewState.session?.sessionCode,
+    overviewState.session?.sessionStatus,
+  ]);
+
+  useEffect(() => {
     if (!isFacilitatorWorkspaceOpen || !staffAuthHeader) {
       return;
     }
@@ -288,6 +315,8 @@ function App() {
         setFacilitatorEconomySettings(null);
         setFacilitatorEconomyOverview(null);
         setFacilitatorKanbanOverview(null);
+        setFacilitatorAnalyticsOverview(null);
+        setFacilitatorAnalyticsLoading(false);
         resetOverview();
         resetSessions();
       }
@@ -395,6 +424,32 @@ function App() {
     }
   };
 
+  const loadAnalyticsOverview = async (
+    sessionCode: string,
+    authHeader: string,
+    options?: { silent?: boolean },
+  ): Promise<void> => {
+    if (!options?.silent) {
+      setFacilitatorAnalyticsLoading(true);
+    }
+
+    try {
+      const payload = await fetchGameSessionAnalytics(sessionCode, authHeader);
+      setFacilitatorAnalyticsOverview(payload);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось загрузить послеигровую аналитику.',
+      );
+      if (!options?.silent) {
+        setFacilitatorAnalyticsOverview(null);
+      }
+    } finally {
+      if (!options?.silent) {
+        setFacilitatorAnalyticsLoading(false);
+      }
+    }
+  };
+
   const handleRefreshSessions = async (): Promise<void> => {
     if (!staffAuthHeader) {
       setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
@@ -403,6 +458,16 @@ function App() {
 
     setFacilitatorActionError('');
     await Promise.all([loadSessions(staffAuthHeader), loadAvailableSessions()]);
+  };
+
+  const handleRefreshAnalytics = async (sessionCode: string): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    setFacilitatorActionError('');
+    await loadAnalyticsOverview(sessionCode, staffAuthHeader);
   };
 
   const syncAfterSessionMutation = async (sessionCode: string): Promise<void> => {
@@ -472,6 +537,7 @@ function App() {
 
     setFacilitatorActionError('');
     setFacilitatorSessionCode(sessionCode);
+    setFacilitatorAnalyticsOverview(null);
     await Promise.all([
       loadSession(sessionCode, staffAuthHeader),
       loadEconomySettings(sessionCode, staffAuthHeader),
@@ -922,6 +988,7 @@ function App() {
         setFacilitatorEconomySettings(null);
         setFacilitatorEconomyOverview(null);
         setFacilitatorKanbanOverview(null);
+        setFacilitatorAnalyticsOverview(null);
         resetOverview();
       }
     } catch (error) {
@@ -1031,6 +1098,8 @@ function App() {
     setFacilitatorEconomySettings(null);
     setFacilitatorEconomyOverview(null);
     setFacilitatorKanbanOverview(null);
+    setFacilitatorAnalyticsOverview(null);
+    setFacilitatorAnalyticsLoading(false);
     setFacilitatorAutoTeamLoading(false);
     setFacilitatorRandomRoleLoading(false);
     setFacilitatorRoleParticipantId(null);
@@ -1096,7 +1165,9 @@ function App() {
             economySettings={facilitatorEconomySettings}
             economyOverview={facilitatorEconomyOverview}
             kanbanOverview={facilitatorKanbanOverview}
+            analyticsOverview={facilitatorAnalyticsOverview}
             economyLoading={facilitatorEconomyLoading}
+            analyticsLoading={facilitatorAnalyticsLoading}
             economySaving={facilitatorEconomySaving}
             inventorySaving={facilitatorInventorySaving}
             randomAssignmentLoading={facilitatorRandomRoleLoading}
@@ -1108,6 +1179,7 @@ function App() {
             onCreateSession={handleCreateSession}
             onRenameSession={handleRenameSession}
             onOpenSession={handleOpenSession}
+            onRefreshAnalytics={handleRefreshAnalytics}
             onRenameTeam={handleRenameTeam}
             onAutoAssignTeams={handleAutoAssignTeams}
             onAssignParticipantTeam={handleAssignParticipantTeam}

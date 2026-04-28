@@ -362,6 +362,122 @@ export interface GameSessionEconomyResponse {
   teams: TeamEconomyItem[];
 }
 
+export interface SessionAnalyticsStageItem {
+  stageNumber: number;
+  durationMinutes: number;
+  interactionMode: StageInteractionMode;
+  totalProblemCount: number;
+  resolvedProblemCount: number;
+  unresolvedProblemCount: number;
+  returnCount: number;
+  holdCount: number;
+  escalatedProblemCount: number;
+  activeEscalationCount: number;
+  netAmount: number;
+}
+
+export interface TeamAnalyticsStageItem {
+  stageNumber: number;
+  durationMinutes: number;
+  interactionMode: StageInteractionMode;
+  totalProblemCount: number;
+  resolvedProblemCount: number;
+  unresolvedProblemCount: number;
+  returnCount: number;
+  holdCount: number;
+  escalatedProblemCount: number;
+  activeEscalationCount: number;
+  netAmount: number;
+}
+
+export interface TeamParticipantAnalyticsItem {
+  participantId: number;
+  displayName: string;
+  gameRole: string | null;
+  tasksAssignedCount: number;
+  tasksStartedCount: number;
+  tasksSentToReviewCount: number;
+  tasksClosedAsExecutorCount: number;
+  departmentApprovalsCount: number;
+  finalApprovalsCount: number;
+  returnsTriggeredCount: number;
+  holdsTriggeredCount: number;
+}
+
+export interface TeamAnalyticsCardItem {
+  cardId: number;
+  problemStateId: number;
+  problemNumber: number;
+  title: string;
+  roomCode: string;
+  roomName: string;
+  stageNumber: number;
+  status: string;
+  priority: KanbanCardPriority | null;
+  responsibleDepartment: KanbanResponsibleDepartment | null;
+  assigneeName: string | null;
+  resolved: boolean;
+  escalated: boolean;
+  returnCount: number;
+  holdCount: number;
+  distributionSeconds: number | null;
+  reactionSeconds: number | null;
+  workSeconds: number | null;
+  departmentReviewSeconds: number | null;
+  chiefReviewSeconds: number | null;
+  fullCycleSeconds: number | null;
+}
+
+export interface TeamAnalyticsItem {
+  teamId: number;
+  teamName: string;
+  rank: number;
+  participantCount: number;
+  totalProblemCount: number;
+  resolvedProblemCount: number;
+  unresolvedProblemCount: number;
+  returnCount: number;
+  holdCount: number;
+  escalatedProblemCount: number;
+  activeEscalationCount: number;
+  currentBalance: number;
+  availableBalance: number;
+  totalIncome: number;
+  totalExpenses: number;
+  totalPenalties: number;
+  totalBonuses: number;
+  avgDistributionSeconds: number | null;
+  avgReactionSeconds: number | null;
+  avgWorkSeconds: number | null;
+  avgDepartmentReviewSeconds: number | null;
+  avgChiefReviewSeconds: number | null;
+  avgFullCycleSeconds: number | null;
+  bottleneckLabel: string;
+  stages: TeamAnalyticsStageItem[];
+  participants: TeamParticipantAnalyticsItem[];
+  cards: TeamAnalyticsCardItem[];
+}
+
+export interface GameSessionAnalyticsResponse {
+  sessionId: number;
+  sessionCode: string;
+  sessionName: string;
+  sessionStatus: string;
+  finalStageCrisisType: FinalStageCrisisType | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  teamCount: number;
+  participantCount: number;
+  totalProblemCount: number;
+  resolvedProblemCount: number;
+  unresolvedProblemCount: number;
+  totalReturnCount: number;
+  totalHoldCount: number;
+  totalEscalatedProblemCount: number;
+  stages: SessionAnalyticsStageItem[];
+  teams: TeamAnalyticsItem[];
+}
+
 export interface GameSessionEconomySettingsUpdateRequest {
   startingBudget: string;
   stageTimeUnits: number;

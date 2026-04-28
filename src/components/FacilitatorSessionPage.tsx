@@ -1,6 +1,7 @@
 import type { ChangeEvent, FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import type {
+  GameSessionAnalyticsResponse,
   GameSessionEconomyResponse,
   GameSessionInventorySettingsRequest,
   GameSessionKanbanResponse,
@@ -14,6 +15,7 @@ import BrandHeader from './BrandHeader';
 import { getSessionStatusLabel } from '../constants/sessionStatuses';
 import { formatRuntimeDuration, getInteractionModeLabel, getRuntimeRemainingSeconds, getTimerStatusLabel } from '../lib/sessionRuntime';
 import FacilitatorLiveDashboard from './FacilitatorLiveDashboard';
+import FacilitatorPostGameAnalytics from './FacilitatorPostGameAnalytics';
 import SessionSetupPanel from './SessionSetupPanel';
 import CollapsibleSection from './CollapsibleSection';
 
@@ -32,7 +34,9 @@ interface FacilitatorSessionPageProps {
   economySettings: SessionEconomySettings | null;
   economyOverview: GameSessionEconomyResponse | null;
   kanbanOverview: GameSessionKanbanResponse | null;
+  analyticsOverview: GameSessionAnalyticsResponse | null;
   economyLoading: boolean;
+  analyticsLoading: boolean;
   economySaving: boolean;
   inventorySaving: boolean;
   randomAssignmentLoading: boolean;
@@ -49,6 +53,7 @@ interface FacilitatorSessionPageProps {
   ) => Promise<boolean>;
   onRenameSession: (sessionCode: string, sessionName: string) => Promise<boolean>;
   onOpenSession: (sessionCode: string) => void | Promise<void>;
+  onRefreshAnalytics: (sessionCode: string) => void | Promise<void>;
   onRenameTeam: (
     sessionCode: string,
     teamId: number,
@@ -325,7 +330,9 @@ function FacilitatorSessionPage({
   economySettings,
   economyOverview,
   kanbanOverview,
+  analyticsOverview,
   economyLoading,
+  analyticsLoading,
   economySaving,
   inventorySaving,
   randomAssignmentLoading,
@@ -337,6 +344,7 @@ function FacilitatorSessionPage({
   onCreateSession,
   onRenameSession,
   onOpenSession,
+  onRefreshAnalytics,
   onRenameTeam,
   onAutoAssignTeams,
   onAssignParticipantTeam,
@@ -666,6 +674,15 @@ function FacilitatorSessionPage({
           </>
         ) : (
           <>
+            {session.sessionStatus === 'FINISHED' ? (
+              <FacilitatorPostGameAnalytics
+                sessionCode={session.sessionCode}
+                authHeader={authHeader}
+                analytics={analyticsOverview}
+                loading={analyticsLoading}
+                onRefreshAnalytics={onRefreshAnalytics}
+              />
+            ) : null}
             <FacilitatorLiveDashboard
               session={session}
               loading={loading}

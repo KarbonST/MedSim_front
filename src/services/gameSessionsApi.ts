@@ -1,5 +1,6 @@
 import type {
   GameSessionCreateRequest,
+  GameSessionAnalyticsResponse,
   GameSessionEconomyResponse,
   GameSessionEconomySettingsUpdateRequest,
   GameSessionInventorySettingsRequest,
@@ -236,6 +237,71 @@ export async function fetchGameSessionKanban(
   }
 
   return response.json() as Promise<GameSessionKanbanResponse>;
+}
+
+export async function fetchGameSessionAnalytics(
+  sessionCode: string,
+  authHeader: string,
+): Promise<GameSessionAnalyticsResponse> {
+  const response = await fetch(
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/analytics`,
+    {
+      headers: createAuthorizedHeaders(authHeader),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 404
+          ? 'Аналитика этой сессии пока не найдена.'
+          : response.status === 401
+            ? 'Нужно заново войти под учётной записью ведущего.'
+            : response.status === 409
+              ? 'Послеигровая аналитика появится после завершения сессии.'
+              : 'Не удалось загрузить послеигровую аналитику. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionAnalyticsResponse>;
+}
+
+export async function downloadGameSessionAnalyticsExport(
+  sessionCode: string,
+  authHeader: string,
+): Promise<{ blob: Blob; filename: string }> {
+  const response = await fetch(
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/analytics/export`,
+    {
+      headers: createAuthorizedHeaders(authHeader),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 404
+          ? 'Excel-отчёт для этой сессии пока не найден.'
+          : response.status === 401
+            ? 'Нужно заново войти под учётной записью ведущего.'
+            : response.status === 409
+              ? 'Excel-отчёт появится после завершения сессии.'
+              : 'Не удалось подготовить Excel-отчёт. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  const blob = await response.blob();
+  const contentDisposition = response.headers.get('content-disposition') ?? '';
+  const filenameMatch = contentDisposition.match(/filename=\"?([^"]+)\"?/i);
+
+  return {
+    blob,
+    filename: filenameMatch?.[1] ?? `medsim-analytics-${sessionCode.toLowerCase()}.xlsx`,
+  };
 }
 
 export async function updateGameSessionEconomySettings(
