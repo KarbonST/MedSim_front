@@ -80,9 +80,7 @@ function FacilitatorLiveDashboard({
         )}
       >
         <div className="waiting-note">
-          <p>
-            После старта команды работают изолированно. Здесь отображается сводка по всем командам и доступен быстрый переход к составу каждой команды без перехода в экран конкретного игрока.
-          </p>
+          <p>Общий обзор по всем командам.</p>
         </div>
 
         <div className="team-cards facilitator-dashboard-teams">
@@ -129,9 +127,7 @@ function FacilitatorLiveDashboard({
         )}
       >
         <div className="waiting-note">
-          <p>
-            Здесь отображаются сообщения обеих команд в реальном времени. Игроки видят только свой чат, а обзор всех переписок доступен только ведущему.
-          </p>
+          <p>Чаты обеих команд в одном месте.</p>
         </div>
 
         <div className="facilitator-team-chat-grid">
@@ -186,7 +182,7 @@ function FacilitatorLiveDashboard({
             badge={<span className="status-pill subtle-status-pill">{selectedTeamEconomy ? 'Доступен' : 'Загрузка...'}</span>}
           >
             <div className="waiting-note compact-note chief-doctor-plan-note">
-              <p>План показывает состояние выбранной команды: кабинеты, активные проблемы и статусы задач.</p>
+              <p>Кабинеты, проблемы и статусы задач выбранной команды.</p>
             </div>
             <ChiefDoctorHospitalPlan
               rooms={selectedTeamEconomy?.rooms ?? []}
@@ -202,7 +198,7 @@ function FacilitatorLiveDashboard({
             badge={<span className="status-pill subtle-status-pill">{selectedTeamKanbanBoard ? 'Просмотр' : 'Загрузка...'}</span>}
           >
             <div className="waiting-note compact-note">
-              <p>Ведущий видит состояние доски выбранной команды без изменения карточек.</p>
+              <p>Доска команды в режиме просмотра.</p>
             </div>
             <TeamKanbanBoard board={selectedTeamKanbanBoard} readOnly />
           </CollapsibleSection>

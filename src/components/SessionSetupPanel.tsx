@@ -623,9 +623,7 @@ function SessionSetupPanel({
         )}
       >
         <div className="waiting-note">
-          <p>
-            Задайте стартовый бюджет и время на этап. Эти значения одинаковы для всех команд и меняются только до запуска игры.
-          </p>
+          <p>Стартовый бюджет и время этапа для всех команд.</p>
         </div>
 
         <div className="setup-toolbar">
@@ -701,9 +699,7 @@ function SessionSetupPanel({
         )}
       >
         <div className="waiting-note">
-          <p>
-            Распределите игроков, при необходимости переименуйте команды и назначьте роли. Раскройте команду, чтобы работать с её участниками.
-          </p>
+          <p>Распределение игроков, команд и ролей.</p>
         </div>
 
         <div className="team-role-groups">
@@ -782,9 +778,7 @@ function SessionSetupPanel({
                       </div>
                     ) : (
                       <div className="waiting-note waiting-note-inline">
-                        <p>
-                          Здесь игроки, которых ещё не добавили в команду. Раскройте карточку игрока и выберите команду.
-                        </p>
+                        <p>Игроки без команды.</p>
                       </div>
                     )}
 
@@ -794,9 +788,7 @@ function SessionSetupPanel({
                       </div>
                     ) : (
                       <div className="waiting-note waiting-note-inline">
-                        <p>
-                          Пока в команде нет игроков. Добавьте их вручную из блока “Игроки без команды” или используйте случайное распределение.
-                        </p>
+                        <p>Команда пока пустая.</p>
                       </div>
                     )}
                   </div>
@@ -819,7 +811,7 @@ function SessionSetupPanel({
       >
         <div className="setup-toolbar">
           <div className="waiting-note waiting-note-inline fixed-stage-note">
-            <p>Количество этапов зафиксировано: 3. Здесь можно менять только длительность и распределение задач.</p>
+            <p>Этапов всегда 3. Меняются только время и задачи.</p>
           </div>
 
           <button
@@ -859,7 +851,7 @@ function SessionSetupPanel({
 
         {!isLobby ? (
           <div className="waiting-note">
-            <p>Игра уже запущена. Этапы этой сессии больше нельзя менять.</p>
+            <p>После старта этапы заблокированы.</p>
           </div>
         ) : null}
 
@@ -953,10 +945,7 @@ function SessionSetupPanel({
         )}
       >
         <div className="waiting-note">
-          <p>
-            Склад формируется одинаковым для всех команд. Можно оставить случайную генерацию или вручную задать количество
-            каждой позиции до старта игры.
-          </p>
+          <p>Одинаковый стартовый склад для всех команд.</p>
         </div>
 
         <div className="setup-toolbar">

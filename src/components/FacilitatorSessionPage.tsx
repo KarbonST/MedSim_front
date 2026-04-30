@@ -203,9 +203,7 @@ function SessionControlPanel({
       badge={<span className="status-pill subtle-status-pill">Статус: {getSessionStatusLabel(session.sessionStatus)}</span>}
     >
       <div className="waiting-note">
-        <p>
-          Здесь отображается общий этап игры и единый таймер сессии. Те же этап и отсчёт будут видны участникам на командных экранах.
-        </p>
+        <p>Общий этап и таймер для всех команд.</p>
       </div>
 
       <div className={shouldShowTimerTools ? 'session-control-grid' : 'session-control-grid session-control-grid--compact'}>
@@ -517,9 +515,7 @@ function FacilitatorSessionPage({
         </form>
 
         <div className="waiting-note compact-note">
-          <p>
-            Укажите название, количество команд и стартовые ресурсы сессии. Код комнаты, стартовые названия команд и 3 этапа по умолчанию сформируются автоматически. Если значения не менять, в новой игре сохранятся дефолтные настройки: 15.00 денежных единиц и 15 единиц времени на этап.
-          </p>
+          <p>Название, команды и стартовые ресурсы. Код комнаты и 3 этапа создаются автоматически. По умолчанию: 15.00 бюджета и 15 времени на этап.</p>
         </div>
       </CollapsibleSection>
 
@@ -585,7 +581,7 @@ function FacilitatorSessionPage({
           </div>
         ) : (
           <div className="waiting-note facilitator-empty-state">
-            <p>Создайте первую игровую комнату, чтобы перейти к настройке команд, этапов и ролей.</p>
+            <p>Создайте сессию, чтобы перейти к настройке.</p>
           </div>
         )}
       </CollapsibleSection>
@@ -733,9 +729,7 @@ function FacilitatorSessionPage({
         )
       ) : (
         <div className="waiting-note facilitator-empty-state">
-          <p>
-            Выберите сессию из списка выше. После этого станут доступны настройка команд, этапов и ролей, а затем и мониторинг игры.
-          </p>
+          <p>Выберите сессию из списка.</p>
         </div>
       )}
 

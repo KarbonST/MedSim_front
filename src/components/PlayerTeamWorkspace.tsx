@@ -214,7 +214,7 @@ function PlayerTeamWorkspaceScreen({
           badge={<span className="status-pill subtle-status-pill">Главный врач</span>}
         >
           <div className="waiting-note compact-note chief-doctor-plan-note">
-            <p>На плане видны кабинеты, их текущее состояние, количество проблем и критичные задачи 3 этапа, если они появились.</p>
+            <p>Кабинеты, активные проблемы и критичные задачи команды.</p>
           </div>
           <ChiefDoctorHospitalPlan
             rooms={workspace.teamEconomy?.rooms ?? []}
@@ -285,7 +285,7 @@ function PlayerTeamWorkspaceScreen({
                 </div>
               ) : (
                 <div className="waiting-note compact-note">
-                  <p>Итоги появятся здесь после перехода ведущего к следующему этапу или завершения раунда.</p>
+                  <p>Итоги этапов появятся после расчёта.</p>
                 </div>
               )}
             </div>
@@ -319,8 +319,8 @@ function PlayerTeamWorkspaceScreen({
                   <div className="waiting-note compact-note">
                     <p>
                       {workspace.inventoryVisible
-                        ? 'Для вашей команды пока не сформирован стартовый набор предметов.'
-                        : 'Детальный склад и резервы видят руководящие роли, но бюджет и время доступны всей команде.'}
+                        ? 'Стартовый склад ещё не заполнен.'
+                        : 'Склад и резервы доступны только руководящим ролям.'}
                     </p>
                   </div>
                 )}
@@ -358,7 +358,7 @@ function PlayerTeamWorkspaceScreen({
                   </div>
                 ) : (
                   <div className="waiting-note compact-note">
-                    <p>Операции появятся после выбора способа решения, согласования задачи или завершения этапа ведущим.</p>
+                    <p>Операции появятся после решений и расчёта этапа.</p>
                   </div>
                 )}
               </div>
@@ -391,7 +391,7 @@ function PlayerTeamWorkspaceScreen({
             </div>
           ) : (
             <div className="waiting-note compact-note">
-              <p>Пока новых уведомлений нет. Когда по вашим задачам появятся назначения, возвраты, согласование или закрытие, это отобразится здесь.</p>
+              <p>Новых уведомлений нет.</p>
             </div>
           )}
         </CollapsibleSection>
@@ -424,8 +424,7 @@ function PlayerTeamWorkspaceScreen({
             <>
               <div className="waiting-note compact-note chat-round-note">
                 <p>
-                  Это тренировочный раунд без визуальной доски: проблемы уже влияют на экономику, но статусы придётся
-                  держать в голове, в чате и в этом общем списке.
+                  Раунд без доски: задачи идут через чат и общий список.
                 </p>
               </div>
               <TeamKanbanBoard
@@ -443,9 +442,7 @@ function PlayerTeamWorkspaceScreen({
             </>
           ) : (
             <div className="waiting-note compact-note">
-              <p>
-                Ведущий ещё не выбрал активный этап. Когда этап стартует, проблемы появятся в режиме чат-раунда или канбана.
-              </p>
+              <p>Этап ещё не запущен.</p>
             </div>
           )}
         </CollapsibleSection>
@@ -453,10 +450,7 @@ function PlayerTeamWorkspaceScreen({
 
       {!hasTeam ? (
         <div className="waiting-note">
-          <p>
-            Сессия уже запущена, но ведущий пока не назначил вам команду. Экран команды появится автоматически сразу
-            после распределения.
-          </p>
+          <p>Команда ещё не назначена. Экран обновится после распределения.</p>
           {loading ? <p className="waiting-note-inline">Проверяем обновления...</p> : null}
           {refreshError ? <p className="form-error waiting-note-inline">{refreshError}</p> : null}
         </div>
@@ -471,8 +465,8 @@ function PlayerTeamWorkspaceScreen({
             <TeamChatFeed
               title={workspace.teamName ?? 'Командный чат'}
               subtitle={workspace.sessionStatus === 'FINISHED'
-                ? 'Игра завершена. История переписки доступна для просмотра.'
-                : 'Сообщения видны только вашей команде и ведущему.'}
+                ? 'История чата'
+                : 'Сообщения видны только команде и ведущему.'}
               messages={chatState.messages}
               loading={chatState.loading}
               connectionStatus={chatState.connectionStatus}
@@ -481,7 +475,7 @@ function PlayerTeamWorkspaceScreen({
               footer={(
                 workspace.sessionStatus === 'FINISHED' ? (
                   <p className="participant-role-subtitle team-chat-footer-note">
-                    После завершения игры чат остаётся доступным только для просмотра.
+                    Чат доступен только для просмотра.
                   </p>
                 ) : (
                   <form
@@ -570,8 +564,8 @@ function PlayerTeamWorkspaceScreen({
           <div className="waiting-note">
             <p>
               {isFinished
-                ? 'Сессия завершена. Командный экран оставлен доступным для просмотра итогового состава команды.'
-                : 'На экране отображаются только данные вашей команды, текущий этап и общий таймер игры. Информация по другим командам скрыта.'}
+                ? 'Игра завершена. Экран доступен только для просмотра.'
+                : 'Показаны только данные вашей команды.'}
             </p>
             {loading ? <p className="waiting-note-inline">Обновляем состояние команды...</p> : null}
             {refreshError ? <p className="form-error waiting-note-inline">{refreshError}</p> : null}
@@ -600,14 +594,14 @@ function getNotificationClassName(type: PlayerKanbanNotificationItem['type'], ba
 
 function getInteractionModeDescription(interactionMode: PlayerTeamWorkspace['sessionRuntime']['activeStageInteractionMode']): string {
   if (interactionMode === 'CHAT_WITH_PROBLEMS') {
-    return 'Проблемы уже доступны, но доска скрыта: команда работает через чат и общий список.';
+    return 'Чат и общий список задач.';
   }
 
   if (interactionMode === 'CHAT_AND_KANBAN') {
-    return 'На этапе доступны чат и канбан-доска команды.';
+    return 'Чат и канбан-доска.';
   }
 
-  return 'Этап пока не выбран.';
+  return 'Этап не выбран.';
 }
 
 function formatSignedNumber(value: number): string {
