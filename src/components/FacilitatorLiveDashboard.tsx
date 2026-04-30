@@ -214,14 +214,14 @@ function FacilitatorLiveDashboard({
                   <span className="participant-index">#{index + 1}</span>
                   <div>
                     <strong>{participant.displayName}</strong>
-                    <p className="participant-role-subtitle">{participant.hospitalPosition}</p>
+                    <p className="participant-role-subtitle">{participant.gameRole ?? 'Игровая роль не назначена'}</p>
                   </div>
                 </div>
 
                 <dl className="participant-details participant-management-details">
                   <div>
-                    <dt>Игровая роль</dt>
-                    <dd>{participant.gameRole ?? 'Пока не назначена'}</dd>
+                    <dt>Реальная должность</dt>
+                    <dd>{participant.hospitalPosition}</dd>
                   </div>
                   <div>
                     <dt>Команда</dt>

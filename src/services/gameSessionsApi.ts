@@ -614,6 +614,34 @@ export async function finishGameSession(
   return response.json() as Promise<GameSessionSummary>;
 }
 
+export async function restartGameSession(
+  sessionCode: string,
+  authHeader: string,
+): Promise<GameSessionParticipantsResponse> {
+  const response = await fetch(
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/restart`,
+    {
+      method: 'PATCH',
+      headers: createAuthorizedHeaders(authHeader),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 409
+          ? 'Сессию нельзя перезапустить в текущем состоянии.'
+          : response.status === 401
+            ? 'Нужно заново войти под учётной записью ведущего.'
+            : 'Не удалось начать игру заново. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionParticipantsResponse>;
+}
+
 export async function deleteGameSession(
   sessionCode: string,
   authHeader: string,

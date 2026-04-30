@@ -1,6 +1,6 @@
 export type Mode = 'player' | 'staff';
 
-export type AccessProfileId = 'facilitator' | 'superuser';
+export type AccessProfileId = 'facilitator';
 
 export interface AccessProfile {
   id: AccessProfileId;

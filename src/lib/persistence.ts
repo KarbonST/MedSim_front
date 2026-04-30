@@ -50,7 +50,7 @@ export function readPersistedAppState(): PersistedAppState {
     return defaultPersistedAppState;
   }
 
-  const rawState = window.localStorage.getItem(APP_STATE_KEY);
+  const rawState = window.sessionStorage.getItem(APP_STATE_KEY);
 
   if (!rawState) {
     return defaultPersistedAppState;
@@ -85,5 +85,5 @@ export function writePersistedAppState(state: PersistedAppState): void {
     return;
   }
 
-  window.localStorage.setItem(APP_STATE_KEY, JSON.stringify(state));
+  window.sessionStorage.setItem(APP_STATE_KEY, JSON.stringify(state));
 }

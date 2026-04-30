@@ -41,8 +41,17 @@ function PlayerTeamWorkspaceScreen({
   const teamEconomy = workspace.teamEconomy;
   const stageSummaries = teamEconomy?.stageSummaries ?? [];
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [runtimeSyncedAtMs, setRuntimeSyncedAtMs] = useState<number | null>(() => Date.now());
   const knownNotificationIdsRef = useRef<Set<number> | null>(null);
   const [toastNotification, setToastNotification] = useState<PlayerKanbanNotificationItem | null>(null);
+
+  useEffect(() => {
+    setRuntimeSyncedAtMs(Date.now());
+  }, [
+    workspace.sessionRuntime.activeStageNumber,
+    workspace.sessionRuntime.timerStatus,
+    workspace.sessionRuntime.remainingSeconds,
+  ]);
 
   useEffect(() => {
     if (workspace.sessionRuntime.timerStatus !== 'RUNNING') {
@@ -94,7 +103,11 @@ function PlayerTeamWorkspaceScreen({
     };
   }, [toastNotification]);
 
-  const remainingSeconds = getRuntimeRemainingSeconds(workspace.sessionRuntime, nowMs);
+  const remainingSeconds = getRuntimeRemainingSeconds(
+    workspace.sessionRuntime,
+    nowMs,
+    runtimeSyncedAtMs,
+  );
   const [chatDraft, setChatDraft] = useState('');
   const { chatState, sendMessage } = usePlayerTeamChat({
     sessionCode: workspace.sessionCode,
@@ -104,11 +117,14 @@ function PlayerTeamWorkspaceScreen({
   const currentStageLabel = workspace.sessionRuntime.activeStageNumber == null
     ? 'Пока не выбран'
     : `Этап ${workspace.sessionRuntime.activeStageNumber}`;
+  const toastNotificationClassName = toastNotification
+    ? getNotificationClassName(toastNotification.type, 'kanban-notification-toast')
+    : 'kanban-notification-toast';
 
   return (
     <section className="session-room">
       {toastNotification ? (
-        <div className="kanban-notification-toast" role="status" aria-live="polite">
+        <div className={toastNotificationClassName} role="status" aria-live="polite">
           <div>
             <span>Новое уведомление</span>
             <strong>{toastNotification.title}</strong>
@@ -142,7 +158,7 @@ function PlayerTeamWorkspaceScreen({
         kicker="Ход игры"
         title="Текущий этап и время"
         className="player-runtime-panel"
-        defaultExpanded
+        defaultExpanded={false}
         badge={(
           <span className="status-pill subtle-status-pill runtime-status-pill">
             {getTimerStatusLabel(workspace.sessionRuntime.timerStatus)}
@@ -168,7 +184,7 @@ function PlayerTeamWorkspaceScreen({
       <CollapsibleSection
         kicker="Информация о сессии"
         title="Код, участник и роль"
-        defaultExpanded={false}
+        defaultExpanded
       >
         <div className="room-grid">
           <article className="info-card">
@@ -194,7 +210,7 @@ function PlayerTeamWorkspaceScreen({
         <CollapsibleSection
           kicker="План поликлиники"
           title="Кабинеты и количество проблем"
-          defaultExpanded
+          defaultExpanded={false}
           badge={<span className="status-pill subtle-status-pill">Главный врач</span>}
         >
           <div className="waiting-note compact-note chief-doctor-plan-note">
@@ -210,7 +226,7 @@ function PlayerTeamWorkspaceScreen({
         <CollapsibleSection
           kicker="Ресурсы"
           title="Ресурсы команды"
-          defaultExpanded
+          defaultExpanded={false}
           badge={(
             <span className="status-pill subtle-status-pill">
               Доступно: {Number(teamEconomy.availableBalance).toFixed(2)}
@@ -355,13 +371,16 @@ function PlayerTeamWorkspaceScreen({
         <CollapsibleSection
           kicker="Канбан"
           title="Уведомления"
-          defaultExpanded={kanbanNotifications.length > 0}
+          defaultExpanded={false}
           badge={<span className="status-pill subtle-status-pill">{kanbanNotifications.length}</span>}
         >
           {kanbanNotifications.length ? (
             <div className="kanban-notifications-list">
               {kanbanNotifications.map((notification) => (
-                <article key={notification.notificationId} className="kanban-notification-card">
+                <article
+                  key={notification.notificationId}
+                  className={getNotificationClassName(notification.type, 'kanban-notification-card')}
+                >
                   <div>
                     <strong>{notification.title}</strong>
                     <time>{formatWorkspaceTimestamp(notification.createdAt)}</time>
@@ -382,7 +401,7 @@ function PlayerTeamWorkspaceScreen({
         <CollapsibleSection
           kicker={chatProblemRoundAvailable ? 'Без доски' : 'Канбан'}
           title={chatProblemRoundAvailable ? 'Проблемы чат-раунда' : 'Доска задач команды'}
-          defaultExpanded={kanbanAvailable || chatProblemRoundAvailable}
+          defaultExpanded={false}
           badge={(
             <span className="status-pill subtle-status-pill">
               {kanbanAvailable ? 'Доступна' : chatProblemRoundAvailable ? 'Чат-раунд' : 'Ждёт этапа'}
@@ -446,7 +465,7 @@ function PlayerTeamWorkspaceScreen({
           <CollapsibleSection
             kicker="Чат команды"
             title="Общение команды"
-            defaultExpanded
+            defaultExpanded={false}
             badge={<span className="status-pill subtle-status-pill">Чат команды</span>}
           >
             <TeamChatFeed
@@ -498,7 +517,7 @@ function PlayerTeamWorkspaceScreen({
           <CollapsibleSection
             kicker="Состав команды"
             title="Только ваша команда"
-            defaultExpanded
+            defaultExpanded={false}
             badge={<span className="status-pill subtle-status-pill">Участников: {workspace.teammates.length}</span>}
           >
             <div className="participants-list workspace-members-list">
@@ -569,6 +588,14 @@ function PlayerTeamWorkspaceScreen({
 
 function formatWorkspaceTimestamp(value: string): string {
   return value.replace('T', ' ').slice(0, 16);
+}
+
+function getNotificationClassName(type: PlayerKanbanNotificationItem['type'], baseClassName: string): string {
+  if (type === 'SOLUTION_FAILED') {
+    return `${baseClassName} ${baseClassName}--warning`;
+  }
+
+  return baseClassName;
 }
 
 function getInteractionModeDescription(interactionMode: PlayerTeamWorkspace['sessionRuntime']['activeStageInteractionMode']): string {

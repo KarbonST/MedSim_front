@@ -339,6 +339,80 @@ function TeamKanbanBoard({
     );
   };
 
+  const renderCardHistory = (
+    history: TeamKanbanCardItem['history'],
+    title: string,
+    emptyMessage: string,
+  ) => (
+    <details className="kanban-card-history">
+      <summary>
+        <span>
+          <strong>{title}</strong>
+          <small>
+            {history.length
+              ? `Записей: ${history.length}. Откройте, если нужно посмотреть ход задачи.`
+              : 'История пока пустая.'}
+          </small>
+        </span>
+        <span className="status-pill subtle-status-pill">{history.length}</span>
+      </summary>
+      {history.length ? (
+        <ol>
+          {history.map((event) => (
+            <li key={event.eventId}>
+              <time>{formatHistoryTimestamp(event.createdAt)}</time>
+              <span>{event.message}</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p>{emptyMessage}</p>
+      )}
+    </details>
+  );
+
+  const getLatestFailedAttempt = (card: TeamKanbanCardItem) => {
+    const history = card.history ?? [];
+    if (!history.length) {
+      return null;
+    }
+
+    const latestEvent = history[history.length - 1];
+    return latestEvent.eventType === 'SOLUTION_FAILED' ? latestEvent : null;
+  };
+
+  const renderFailedAttemptBadge = (card: TeamKanbanCardItem) => {
+    const failedAttempt = getLatestFailedAttempt(card);
+
+    if (!failedAttempt || (!readOnly && currentGameRole !== chiefDoctorRole)) {
+      return null;
+    }
+
+    return (
+      <span className="kanban-failure-badge">
+        Решение не сработало
+      </span>
+    );
+  };
+
+  const renderFailedAttemptPanel = (card: TeamKanbanCardItem) => {
+    const failedAttempt = getLatestFailedAttempt(card);
+
+    if (!failedAttempt || (!readOnly && currentGameRole !== chiefDoctorRole)) {
+      return null;
+    }
+
+    return (
+      <div className="kanban-card-failure">
+        <strong>Последняя попытка не прошла вероятностную проверку</strong>
+        <p>
+          Задача автоматически вернулась в задачи этапа. Главврачу нужно заново принять решение по этой карточке.
+        </p>
+        <span>Зафиксировано: {formatHistoryTimestamp(failedAttempt.createdAt)}</span>
+      </div>
+    );
+  };
+
   const renderCardActions = (card: TeamKanbanCardItem) => {
     if (readOnly || !onUpdateCardStatus) {
       return <p className="kanban-card-action-note">{getWaitingHint(card)}</p>;
@@ -706,6 +780,7 @@ function TeamKanbanBoard({
                     <span>{statusLabels[card.status]}</span>
                     <span>{priorityLabel}</span>
                     <span>{responsibleDepartmentLabel}</span>
+                    {renderFailedAttemptBadge(card)}
                     {renderEscalationBadge(card)}
                   </span>
                 </button>
@@ -716,6 +791,7 @@ function TeamKanbanBoard({
                       {severityLabels[card.severity]} проблема · кабинет {card.roomCode}. Отложенная задача вернётся
                       в общий пул при переходе на следующий этап.
                     </p>
+                    {renderFailedAttemptPanel(card)}
                     {renderEscalationPanel(card)}
                     <dl className="kanban-card-facts">
                       <div>
@@ -731,21 +807,11 @@ function TeamKanbanBoard({
                         <dd>{formatSelectedSolution(card)}</dd>
                       </div>
                     </dl>
-                    <div className="kanban-card-history">
-                      <h5>История карточки</h5>
-                      {history.length ? (
-                        <ol>
-                          {history.map((event) => (
-                            <li key={event.eventId}>
-                              <time>{formatHistoryTimestamp(event.createdAt)}</time>
-                              <span>{event.message}</span>
-                            </li>
-                          ))}
-                        </ol>
-                      ) : (
-                        <p>История появится после первых действий с карточкой.</p>
-                      )}
-                    </div>
+                    {renderCardHistory(
+                      history,
+                      'История карточки',
+                      'История появится после первых действий с карточкой.',
+                    )}
                     {renderCardActions(card)}
                   </div>
                 ) : null}
@@ -785,6 +851,7 @@ function TeamKanbanBoard({
             <span>{statusLabels[card.status]}</span>
             <span>{priorityLabel}</span>
             <span>{responsibleDepartmentLabel}</span>
+            {renderFailedAttemptBadge(card)}
             {renderEscalationBadge(card)}
             {card.selectedSolutionTitle ? <span>{formatReservationState(card)}</span> : null}
             {card.assigneeName ? <span>{card.assigneeName}</span> : null}
@@ -796,6 +863,7 @@ function TeamKanbanBoard({
             <p>
               {severityLabels[card.severity]} проблема · {statusLabels[card.status]} · кабинет {card.roomCode}
             </p>
+            {renderFailedAttemptPanel(card)}
             {renderEscalationPanel(card)}
             <dl className="kanban-card-facts">
               <div>
@@ -815,21 +883,11 @@ function TeamKanbanBoard({
                 <dd>{formatSelectedSolution(card)}</dd>
               </div>
             </dl>
-            <div className="kanban-card-history">
-              <h5>История карточки</h5>
-              {history.length ? (
-                <ol>
-                  {history.map((event) => (
-                    <li key={event.eventId}>
-                      <time>{formatHistoryTimestamp(event.createdAt)}</time>
-                      <span>{event.message}</span>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p>История появится после первых действий с карточкой.</p>
-              )}
-            </div>
+            {renderCardHistory(
+              history,
+              'История карточки',
+              'История появится после первых действий с карточкой.',
+            )}
             {renderCardActions(card)}
           </div>
         ) : null}
@@ -972,6 +1030,7 @@ function TeamKanbanBoard({
                     <span>{statusLabels[card.status]}</span>
                     <span>{priorityLabel}</span>
                     <span>{responsibleDepartmentLabel}</span>
+                    {renderFailedAttemptBadge(card)}
                     {renderEscalationBadge(card)}
                     {card.selectedSolutionTitle ? <span>{formatReservationState(card)}</span> : null}
                     {card.assigneeName ? <span>{card.assigneeName}</span> : null}
@@ -984,6 +1043,7 @@ function TeamKanbanBoard({
                       {severityLabels[card.severity]} проблема · кабинет {card.roomCode}. В чат-раунде нет колонок, поэтому
                       состояние задачи приходится восстанавливать по списку и сообщениям.
                     </p>
+                    {renderFailedAttemptPanel(card)}
                     {renderEscalationPanel(card)}
                     <dl className="kanban-card-facts">
                       <div>
@@ -1007,21 +1067,11 @@ function TeamKanbanBoard({
                         <dd>{formatSelectedSolution(card)}</dd>
                       </div>
                     </dl>
-                    <div className="kanban-card-history">
-                      <h5>Журнал действий</h5>
-                      {history.length ? (
-                        <ol>
-                          {history.map((event) => (
-                            <li key={event.eventId}>
-                              <time>{formatHistoryTimestamp(event.createdAt)}</time>
-                              <span>{event.message}</span>
-                            </li>
-                          ))}
-                        </ol>
-                      ) : (
-                        <p>Пока действий нет. Решения придётся проговаривать и фиксировать вручную через этот список.</p>
-                      )}
-                    </div>
+                    {renderCardHistory(
+                      history,
+                      'Журнал действий',
+                      'Пока действий нет. Решения придётся проговаривать и фиксировать вручную через этот список.',
+                    )}
                     {renderCardActions(card)}
                   </div>
                 ) : null}

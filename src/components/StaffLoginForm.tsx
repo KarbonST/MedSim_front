@@ -27,24 +27,26 @@ function StaffLoginForm({
   return (
     <form className="entry-form" onSubmit={onSubmit}>
       <div className="form-heading">
-        <p className="section-kicker">Служебный вход</p>
-        <h2>Авторизация персонала</h2>
+        <p className="section-kicker">Вход ведущего</p>
+        <h2>Авторизация ведущего</h2>
         <p>{activeProfile.hint}</p>
       </div>
 
-      <div className="access-cards">
-        {accessProfiles.map((profile) => (
-          <button
-            key={profile.id}
-            type="button"
-            className={formState.profile === profile.id ? 'access-card active' : 'access-card'}
-            onClick={() => onChange('profile', profile.id)}
-          >
-            <strong>{profile.label}</strong>
-            <span>{profile.hint}</span>
-          </button>
-        ))}
-      </div>
+      {accessProfiles.length > 1 ? (
+        <div className="access-cards">
+          {accessProfiles.map((profile) => (
+            <button
+              key={profile.id}
+              type="button"
+              className={formState.profile === profile.id ? 'access-card active' : 'access-card'}
+              onClick={() => onChange('profile', profile.id)}
+            >
+              <strong>{profile.label}</strong>
+              <span>{profile.hint}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <label className="field">
         <span>Логин</span>

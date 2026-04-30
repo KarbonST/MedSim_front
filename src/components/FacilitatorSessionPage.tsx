@@ -92,6 +92,7 @@ interface FacilitatorSessionPageProps {
   onStartSession: (sessionCode: string) => void | Promise<void>;
   onPauseSession: (sessionCode: string) => void | Promise<void>;
   onFinishSession: (sessionCode: string) => void | Promise<void>;
+  onRestartSession: (sessionCode: string) => void | Promise<void>;
   onDeleteSession: (sessionCode: string) => void | Promise<void>;
   onBack: () => void;
 }
@@ -106,6 +107,7 @@ interface SessionControlPanelProps {
   onStartSession: (sessionCode: string) => void | Promise<void>;
   onPauseSession: (sessionCode: string) => void | Promise<void>;
   onFinishSession: (sessionCode: string) => void | Promise<void>;
+  onRestartSession: (sessionCode: string) => void | Promise<void>;
 }
 
 function sortStages(stages: SessionStageSetting[]): SessionStageSetting[] {
@@ -122,9 +124,19 @@ function SessionControlPanel({
   onStartSession,
   onPauseSession,
   onFinishSession,
+  onRestartSession,
 }: SessionControlPanelProps) {
   const stages = useMemo(() => sortStages(session.stages), [session.stages]);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [runtimeSyncedAtMs, setRuntimeSyncedAtMs] = useState<number | null>(() => Date.now());
+
+  useEffect(() => {
+    setRuntimeSyncedAtMs(Date.now());
+  }, [
+    session.sessionRuntime.activeStageNumber,
+    session.sessionRuntime.timerStatus,
+    session.sessionRuntime.remainingSeconds,
+  ]);
 
   useEffect(() => {
     if (session.sessionRuntime.timerStatus !== 'RUNNING') {
@@ -143,7 +155,11 @@ function SessionControlPanel({
 
   const currentStageNumber = session.sessionRuntime.activeStageNumber ?? stages[0]?.stageNumber ?? null;
   const currentStage = stages.find((stage) => stage.stageNumber === currentStageNumber) ?? stages[0] ?? null;
-  const remainingSeconds = getRuntimeRemainingSeconds(session.sessionRuntime, nowMs);
+  const remainingSeconds = getRuntimeRemainingSeconds(
+    session.sessionRuntime,
+    nowMs,
+    runtimeSyncedAtMs,
+  );
   const isActionPending = actionSessionCode === session.sessionCode;
   const hasSavedStages = stages.length > 0;
   const leadershipRoles = ['Главный врач', 'Главная медсестра', 'Главный инженер'];
@@ -172,6 +188,7 @@ function SessionControlPanel({
     || session.sessionStatus === 'PAUSED';
   const canPauseGame = session.sessionStatus === 'IN_PROGRESS';
   const canFinishGame = session.sessionStatus === 'IN_PROGRESS' || session.sessionStatus === 'PAUSED';
+  const canRestartGame = session.sessionStatus !== 'LOBBY';
   const shouldShowTimerTools = session.sessionStatus !== 'LOBBY';
   const isRunning = session.sessionStatus === 'IN_PROGRESS';
   const startButtonLabel = session.sessionStatus === 'PAUSED' ? 'Продолжить игру' : 'Начать игру';
@@ -307,6 +324,14 @@ function SessionControlPanel({
               >
                 {isActionPending && canFinishGame ? 'Завершение...' : 'Завершить игру'}
               </button>
+              <button
+                type="button"
+                className="secondary-button compact-button"
+                onClick={() => onRestartSession(session.sessionCode)}
+                disabled={!canRestartGame || isActionPending}
+              >
+                {isActionPending && canRestartGame ? 'Перезапуск...' : 'Начать заново'}
+              </button>
             </div>
           </div>
         </div>
@@ -361,6 +386,7 @@ function FacilitatorSessionPage({
   onStartSession,
   onPauseSession,
   onFinishSession,
+  onRestartSession,
   onDeleteSession,
   onBack,
 }: FacilitatorSessionPageProps) {
@@ -670,6 +696,7 @@ function FacilitatorSessionPage({
               onStartSession={onStartSession}
               onPauseSession={onPauseSession}
               onFinishSession={onFinishSession}
+              onRestartSession={onRestartSession}
             />
           </>
         ) : (
@@ -700,6 +727,7 @@ function FacilitatorSessionPage({
               onStartSession={onStartSession}
               onPauseSession={onPauseSession}
               onFinishSession={onFinishSession}
+              onRestartSession={onRestartSession}
             />
           </>
         )

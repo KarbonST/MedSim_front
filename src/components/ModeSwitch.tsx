@@ -20,7 +20,7 @@ function ModeSwitch({ mode, onChange }: ModeSwitchProps) {
         className={mode === 'staff' ? 'mode-button active' : 'mode-button'}
         onClick={() => onChange('staff')}
       >
-        Ведущий / суперпользователь
+        Ведущий
       </button>
     </div>
   );
