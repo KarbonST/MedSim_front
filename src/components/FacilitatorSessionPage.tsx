@@ -163,8 +163,14 @@ function SessionControlPanel({
   const isActionPending = actionSessionCode === session.sessionCode;
   const hasSavedStages = stages.length > 0;
   const leadershipRoles = ['Главный врач', 'Главная медсестра', 'Главный инженер'];
+  const executorRoles = [
+    'Сестра поликлинического отделения',
+    'Сестра диагностического отделения',
+    'Заместитель главного инженера по медтехнике',
+    'Заместитель главного инженера по АХЧ',
+  ];
   const unassignedParticipantsCount = session.participants.filter((participant) => participant.teamId == null).length;
-  const teamsMissingLeadership = session.teams
+  const teamsMissingRequiredRoles = session.teams
     .map((team) => {
       const teamRoles = session.participants
         .filter((participant) => participant.teamId === team.teamId)
@@ -173,18 +179,20 @@ function SessionControlPanel({
       const missingLeadershipRoles = leadershipRoles.filter(
         (role) => !teamRoles.some((assignedRole) => assignedRole.toLowerCase() === role.toLowerCase()),
       );
+      const hasExecutor = teamRoles.some((role) => executorRoles.some((executorRole) => executorRole.toLowerCase() === role.toLowerCase()));
 
       return {
         teamName: team.teamName,
         missingLeadershipRoles,
+        missingExecutor: !hasExecutor,
       };
     })
-    .filter((team) => team.missingLeadershipRoles.length > 0);
+    .filter((team) => team.missingLeadershipRoles.length > 0 || team.missingExecutor);
   const canStartGame =
     (session.sessionStatus === 'LOBBY'
       && hasSavedStages
       && unassignedParticipantsCount === 0
-      && teamsMissingLeadership.length === 0)
+      && teamsMissingRequiredRoles.length === 0)
     || session.sessionStatus === 'PAUSED';
   const canPauseGame = session.sessionStatus === 'IN_PROGRESS';
   const canFinishGame = session.sessionStatus === 'IN_PROGRESS' || session.sessionStatus === 'PAUSED';
@@ -291,10 +299,18 @@ function SessionControlPanel({
                 Перед стартом распределите по командам всех игроков. Без команды сейчас: {unassignedParticipantsCount}.
               </p>
             ) : null}
-            {hasSavedStages && teamsMissingLeadership.length > 0 ? (
+            {hasSavedStages && teamsMissingRequiredRoles.length > 0 ? (
               <p className="participant-role-subtitle">
-                Перед стартом в каждой команде должны быть назначены роли главного врача, главной медсестры и главного
-                инженера. Сейчас не хватает: {teamsMissingLeadership.map((team) => `${team.teamName} (${team.missingLeadershipRoles.join(', ')})`).join('; ')}.
+                Перед стартом в каждой команде нужны все руководящие роли и хотя бы один исполнитель. Сейчас не хватает:
+                {' '}
+                {teamsMissingRequiredRoles.map((team) => {
+                  const missingParts = [
+                    ...team.missingLeadershipRoles,
+                    ...(team.missingExecutor ? ['исполнитель'] : []),
+                  ];
+
+                  return `${team.teamName} (${missingParts.join(', ')})`;
+                }).join('; ')}.
               </p>
             ) : null}
             <div className="session-control-actions-row">
