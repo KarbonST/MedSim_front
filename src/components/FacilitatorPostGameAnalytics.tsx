@@ -24,6 +24,18 @@ const dateTimeFormatter = new Intl.DateTimeFormat('ru-RU', {
   minute: '2-digit',
 });
 
+const analyticsCardStatusLabels: Record<string, string> = {
+  REGISTERED: 'Задача этапа',
+  ASSIGNED: 'На распределении',
+  READY_FOR_WORK: 'Исполнитель назначен',
+  IN_PROGRESS: 'В работе',
+  DEPARTMENT_REVIEW: 'Проверка подразделения',
+  CHIEF_DOCTOR_REVIEW: 'Финальное согласование',
+  REWORK: 'Возвращена в задачи этапа',
+  HOLD: 'Отложена',
+  DONE: 'Закрыта',
+};
+
 function formatMoney(value: number): string {
   return value.toFixed(2);
 }
@@ -57,6 +69,14 @@ function sliceTopCards(cards: TeamAnalyticsCardItem[]): TeamAnalyticsCardItem[] 
   return cards.slice(0, 5);
 }
 
+function getAnalyticsCardStatusLabel(card: TeamAnalyticsCardItem): string {
+  if (card.resolved || card.status === 'DONE') {
+    return 'Закрыта';
+  }
+
+  return analyticsCardStatusLabels[card.status] ?? card.status;
+}
+
 function TeamTopCards({ team }: { team: TeamAnalyticsItem }) {
   const topCards = useMemo(() => sliceTopCards(team.cards), [team.cards]);
 
@@ -79,7 +99,7 @@ function TeamTopCards({ team }: { team: TeamAnalyticsItem }) {
                 <strong>{card.problemNumber}. {card.title}</strong>
                 <span>{card.roomCode} {card.roomName}</span>
               </td>
-              <td>{card.resolved ? 'Закрыта' : card.status}</td>
+              <td>{getAnalyticsCardStatusLabel(card)}</td>
               <td>{card.returnCount}</td>
               <td>{card.holdCount}</td>
               <td>{formatDuration(card.fullCycleSeconds)}</td>
