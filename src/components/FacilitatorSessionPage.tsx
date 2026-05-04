@@ -163,9 +163,11 @@ function SessionControlPanel({
   const isActionPending = actionSessionCode === session.sessionCode;
   const hasSavedStages = stages.length > 0;
   const leadershipRoles = ['Главный врач', 'Главная медсестра', 'Главный инженер'];
-  const executorRoles = [
+  const medicalExecutorRoles = [
     'Сестра поликлинического отделения',
     'Сестра диагностического отделения',
+  ];
+  const engineeringExecutorRoles = [
     'Заместитель главного инженера по медтехнике',
     'Заместитель главного инженера по АХЧ',
   ];
@@ -179,15 +181,21 @@ function SessionControlPanel({
       const missingLeadershipRoles = leadershipRoles.filter(
         (role) => !teamRoles.some((assignedRole) => assignedRole.toLowerCase() === role.toLowerCase()),
       );
-      const hasExecutor = teamRoles.some((role) => executorRoles.some((executorRole) => executorRole.toLowerCase() === role.toLowerCase()));
+      const hasMedicalExecutor = teamRoles.some(
+        (role) => medicalExecutorRoles.some((executorRole) => executorRole.toLowerCase() === role.toLowerCase()),
+      );
+      const hasEngineeringExecutor = teamRoles.some(
+        (role) => engineeringExecutorRoles.some((executorRole) => executorRole.toLowerCase() === role.toLowerCase()),
+      );
 
       return {
         teamName: team.teamName,
         missingLeadershipRoles,
-        missingExecutor: !hasExecutor,
+        missingMedicalExecutor: !hasMedicalExecutor,
+        missingEngineeringExecutor: !hasEngineeringExecutor,
       };
     })
-    .filter((team) => team.missingLeadershipRoles.length > 0 || team.missingExecutor);
+    .filter((team) => team.missingLeadershipRoles.length > 0 || team.missingMedicalExecutor || team.missingEngineeringExecutor);
   const canStartGame =
     (session.sessionStatus === 'LOBBY'
       && hasSavedStages
@@ -301,12 +309,13 @@ function SessionControlPanel({
             ) : null}
             {hasSavedStages && teamsMissingRequiredRoles.length > 0 ? (
               <p className="participant-role-subtitle">
-                Перед стартом в каждой команде нужны все руководящие роли и хотя бы один исполнитель. Сейчас не хватает:
+                Перед стартом в каждой команде нужны все руководящие роли и два исполнительских контура: медицинский и инженерный. Сейчас не хватает:
                 {' '}
                 {teamsMissingRequiredRoles.map((team) => {
                   const missingParts = [
                     ...team.missingLeadershipRoles,
-                    ...(team.missingExecutor ? ['исполнитель'] : []),
+                    ...(team.missingMedicalExecutor ? ['медицинский исполнитель'] : []),
+                    ...(team.missingEngineeringExecutor ? ['инженерный исполнитель'] : []),
                   ];
 
                   return `${team.teamName} (${missingParts.join(', ')})`;
