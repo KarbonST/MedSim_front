@@ -206,6 +206,96 @@ function PlayerTeamWorkspaceScreen({
         </div>
       </CollapsibleSection>
 
+      {hasTeam ? (
+        <CollapsibleSection
+          kicker="Канбан"
+          title="Уведомления"
+          defaultExpanded={false}
+          badge={<span className="status-pill subtle-status-pill">{kanbanNotifications.length}</span>}
+        >
+          {kanbanNotifications.length ? (
+            <div className="kanban-notifications-list">
+              {kanbanNotifications.map((notification) => (
+                <article
+                  key={notification.notificationId}
+                  className={getNotificationClassName(notification.type, 'kanban-notification-card')}
+                >
+                  <div>
+                    <strong>{notification.title}</strong>
+                    <time>{formatWorkspaceTimestamp(notification.createdAt)}</time>
+                  </div>
+                  <p>{notification.message}</p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="waiting-note compact-note">
+              <p>Новых уведомлений нет.</p>
+            </div>
+          )}
+        </CollapsibleSection>
+      ) : null}
+
+      {!hasTeam ? (
+        <div className="waiting-note">
+          <p>Команда ещё не назначена. Экран обновится после распределения.</p>
+          {loading ? <p className="waiting-note-inline">Проверяем обновления...</p> : null}
+          {refreshError ? <p className="form-error waiting-note-inline">{refreshError}</p> : null}
+        </div>
+      ) : (
+        <CollapsibleSection
+          kicker="Чат команды"
+          title="Общение команды"
+          defaultExpanded={false}
+          badge={<span className="status-pill subtle-status-pill">Чат команды</span>}
+        >
+          <TeamChatFeed
+            title={workspace.teamName ?? 'Командный чат'}
+            subtitle={workspace.sessionStatus === 'FINISHED'
+              ? 'История чата'
+              : 'Сообщения видны только команде и ведущему.'}
+            messages={chatState.messages}
+            loading={chatState.loading}
+            connectionStatus={chatState.connectionStatus}
+            emptyText="Сообщения вашей команды появятся здесь."
+            currentParticipantId={workspace.participantId}
+            footer={(
+              workspace.sessionStatus === 'FINISHED' ? (
+                <p className="participant-role-subtitle team-chat-footer-note">
+                  Чат доступен только для просмотра.
+                </p>
+              ) : (
+                <form
+                  className="team-chat-composer"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const sent = sendMessage(chatDraft);
+                    if (sent) {
+                      setChatDraft('');
+                    }
+                  }}
+                >
+                  <textarea
+                    value={chatDraft}
+                    onChange={(event) => setChatDraft(event.target.value)}
+                    placeholder="Напишите сообщение для своей команды"
+                    rows={3}
+                  />
+                  <button
+                    type="submit"
+                    className="primary-button compact-button"
+                    disabled={!chatDraft.trim()}
+                  >
+                    Отправить
+                  </button>
+                </form>
+              )
+            )}
+          />
+          {chatState.error ? <p className="form-error">{chatState.error}</p> : null}
+        </CollapsibleSection>
+      )}
+
       {hasTeam && workspace.gameRole === 'Главный врач' ? (
         <CollapsibleSection
           kicker="План поликлиники"
@@ -369,36 +459,6 @@ function PlayerTeamWorkspaceScreen({
 
       {hasTeam ? (
         <CollapsibleSection
-          kicker="Канбан"
-          title="Уведомления"
-          defaultExpanded={false}
-          badge={<span className="status-pill subtle-status-pill">{kanbanNotifications.length}</span>}
-        >
-          {kanbanNotifications.length ? (
-            <div className="kanban-notifications-list">
-              {kanbanNotifications.map((notification) => (
-                <article
-                  key={notification.notificationId}
-                  className={getNotificationClassName(notification.type, 'kanban-notification-card')}
-                >
-                  <div>
-                    <strong>{notification.title}</strong>
-                    <time>{formatWorkspaceTimestamp(notification.createdAt)}</time>
-                  </div>
-                  <p>{notification.message}</p>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="waiting-note compact-note">
-              <p>Новых уведомлений нет.</p>
-            </div>
-          )}
-        </CollapsibleSection>
-      ) : null}
-
-      {hasTeam ? (
-        <CollapsibleSection
           kicker={chatProblemRoundAvailable ? 'Без доски' : 'Канбан'}
           title={chatProblemRoundAvailable ? 'Проблемы чат-раунда' : 'Доска задач команды'}
           defaultExpanded={false}
@@ -448,66 +508,8 @@ function PlayerTeamWorkspaceScreen({
         </CollapsibleSection>
       ) : null}
 
-      {!hasTeam ? (
-        <div className="waiting-note">
-          <p>Команда ещё не назначена. Экран обновится после распределения.</p>
-          {loading ? <p className="waiting-note-inline">Проверяем обновления...</p> : null}
-          {refreshError ? <p className="form-error waiting-note-inline">{refreshError}</p> : null}
-        </div>
-      ) : (
+      {hasTeam ? (
         <>
-          <CollapsibleSection
-            kicker="Чат команды"
-            title="Общение команды"
-            defaultExpanded={false}
-            badge={<span className="status-pill subtle-status-pill">Чат команды</span>}
-          >
-            <TeamChatFeed
-              title={workspace.teamName ?? 'Командный чат'}
-              subtitle={workspace.sessionStatus === 'FINISHED'
-                ? 'История чата'
-                : 'Сообщения видны только команде и ведущему.'}
-              messages={chatState.messages}
-              loading={chatState.loading}
-              connectionStatus={chatState.connectionStatus}
-              emptyText="Сообщения вашей команды появятся здесь."
-              currentParticipantId={workspace.participantId}
-              footer={(
-                workspace.sessionStatus === 'FINISHED' ? (
-                  <p className="participant-role-subtitle team-chat-footer-note">
-                    Чат доступен только для просмотра.
-                  </p>
-                ) : (
-                  <form
-                    className="team-chat-composer"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      const sent = sendMessage(chatDraft);
-                      if (sent) {
-                        setChatDraft('');
-                      }
-                    }}
-                  >
-                    <textarea
-                      value={chatDraft}
-                      onChange={(event) => setChatDraft(event.target.value)}
-                      placeholder="Напишите сообщение для своей команды"
-                      rows={3}
-                    />
-                    <button
-                      type="submit"
-                      className="primary-button compact-button"
-                      disabled={!chatDraft.trim()}
-                    >
-                      Отправить
-                    </button>
-                  </form>
-                )
-              )}
-            />
-            {chatState.error ? <p className="form-error">{chatState.error}</p> : null}
-          </CollapsibleSection>
-
           <CollapsibleSection
             kicker="Состав команды"
             title="Только ваша команда"
@@ -571,7 +573,7 @@ function PlayerTeamWorkspaceScreen({
             {refreshError ? <p className="form-error waiting-note-inline">{refreshError}</p> : null}
           </div>
         </>
-      )}
+      ) : null}
 
       <button type="button" className="secondary-button" onClick={onReset}>
         Вернуться на старт
