@@ -391,6 +391,33 @@ export async function assignParticipantTeam(
   return response.json() as Promise<GameSessionParticipantsResponse>;
 }
 
+export async function deleteGameSessionParticipant(
+  sessionCode: string,
+  participantId: number,
+  authHeader: string,
+): Promise<GameSessionParticipantsResponse> {
+  const response = await fetch(
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/participants/${participantId}`,
+    {
+      method: 'DELETE',
+      headers: createAuthorizedHeaders(authHeader),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось исключить участника из сессии. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionParticipantsResponse>;
+}
+
 export async function saveGameSessionStages(
   sessionCode: string,
   request: GameSessionStageSettingsRequest,

@@ -41,6 +41,7 @@ interface FacilitatorSessionPageProps {
   inventorySaving: boolean;
   randomAssignmentLoading: boolean;
   roleAssignmentParticipantId: number | null;
+  removingParticipantId: number | null;
   error: string;
   session: GameSessionParticipantsResponse | null;
   sessions: GameSessionSummary[];
@@ -64,6 +65,10 @@ interface FacilitatorSessionPageProps {
     sessionCode: string,
     participantId: number,
     teamId: number | null,
+  ) => void | Promise<void>;
+  onRemoveParticipant: (
+    sessionCode: string,
+    participantId: number,
   ) => void | Promise<void>;
   onSaveStages: (
     sessionCode: string,
@@ -385,6 +390,7 @@ function FacilitatorSessionPage({
   inventorySaving,
   randomAssignmentLoading,
   roleAssignmentParticipantId,
+  removingParticipantId,
   error,
   session,
   sessions,
@@ -396,6 +402,7 @@ function FacilitatorSessionPage({
   onRenameTeam,
   onAutoAssignTeams,
   onAssignParticipantTeam,
+  onRemoveParticipant,
   onSaveStages,
   onSaveEconomySettings,
   onSaveInventorySettings,
@@ -697,9 +704,11 @@ function FacilitatorSessionPage({
               teamRenameId={teamRenameId}
               teamAssignmentParticipantId={teamAssignmentParticipantId}
               roleAssignmentParticipantId={roleAssignmentParticipantId}
+              removingParticipantId={removingParticipantId}
               onRenameTeam={onRenameTeam}
               onAutoAssignTeams={onAutoAssignTeams}
               onAssignParticipantTeam={onAssignParticipantTeam}
+              onRemoveParticipant={onRemoveParticipant}
               onSaveStages={onSaveStages}
               onSaveEconomySettings={onSaveEconomySettings}
               onSaveInventorySettings={onSaveInventorySettings}

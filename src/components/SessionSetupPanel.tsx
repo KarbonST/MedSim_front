@@ -27,6 +27,7 @@ interface SessionSetupPanelProps {
   teamRenameId: number | null;
   teamAssignmentParticipantId: number | null;
   roleAssignmentParticipantId: number | null;
+  removingParticipantId: number | null;
   onRenameTeam: (
     sessionCode: string,
     teamId: number,
@@ -37,6 +38,10 @@ interface SessionSetupPanelProps {
     sessionCode: string,
     participantId: number,
     teamId: number | null,
+  ) => void | Promise<void>;
+  onRemoveParticipant: (
+    sessionCode: string,
+    participantId: number,
   ) => void | Promise<void>;
   onSaveStages: (
     sessionCode: string,
@@ -197,9 +202,11 @@ function SessionSetupPanel({
   teamRenameId,
   teamAssignmentParticipantId,
   roleAssignmentParticipantId,
+  removingParticipantId,
   onRenameTeam,
   onAutoAssignTeams,
   onAssignParticipantTeam,
+  onRemoveParticipant,
   onSaveStages,
   onSaveEconomySettings,
   onSaveInventorySettings,
@@ -463,6 +470,7 @@ function SessionSetupPanel({
     const currentTeamDraft = participant.teamId === null ? '' : String(participant.teamId);
     const isTeamDraftChanged = teamDraft !== currentTeamDraft;
     const teamActionLabel = hasTeam && teamDraft === '' ? 'Убрать из команды' : 'Переместить';
+    const isParticipantRemoving = removingParticipantId === participant.participantId;
 
     return (
       <article
@@ -532,9 +540,20 @@ function SessionSetupPanel({
                 onClick={() => {
                   void handleAssignTeam(participant.participantId);
                 }}
-                disabled={!isLobby || isTeamUpdating || !isTeamDraftChanged}
+                disabled={!isLobby || isTeamUpdating || isParticipantRemoving || !isTeamDraftChanged}
               >
                 {isTeamUpdating ? 'Перенос...' : teamActionLabel}
+              </button>
+
+              <button
+                type="button"
+                className="danger-button compact-button"
+                onClick={() => {
+                  void onRemoveParticipant(session.sessionCode, participant.participantId);
+                }}
+                disabled={!isLobby || isTeamUpdating || isParticipantUpdating || isParticipantRemoving}
+              >
+                {isParticipantRemoving ? 'Исключение...' : 'Исключить'}
               </button>
             </div>
 
@@ -550,7 +569,7 @@ function SessionSetupPanel({
                       event.target.value,
                     );
                   }}
-                  disabled={!isLobby || isParticipantUpdating || !hasTeam}
+                  disabled={!isLobby || isParticipantUpdating || isParticipantRemoving || !hasTeam}
                 >
                   <option value="">Выберите роль</option>
                   {commonGameRoles.map((role) => (
@@ -576,7 +595,7 @@ function SessionSetupPanel({
                         event.target.value,
                       );
                     }}
-                    disabled={!isLobby || isParticipantUpdating || !hasTeam}
+                    disabled={!isLobby || isParticipantUpdating || isParticipantRemoving || !hasTeam}
                   />
                 </label>
               ) : null}
@@ -591,7 +610,7 @@ function SessionSetupPanel({
                     resolvedRole,
                   );
                 }}
-                disabled={!isLobby || isParticipantUpdating || !resolvedRole || !hasTeam}
+                disabled={!isLobby || isParticipantUpdating || isParticipantRemoving || !resolvedRole || !hasTeam}
               >
                 {isParticipantUpdating ? 'Назначение...' : 'Назначить роль'}
               </button>

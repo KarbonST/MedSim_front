@@ -23,6 +23,7 @@ import {
   assignRandomGameRoles,
   autoAssignTeams,
   createGameSession,
+  deleteGameSessionParticipant,
   deleteGameSession,
   fetchGameSessionAnalytics,
   fetchGameSessionEconomy,
@@ -105,6 +106,7 @@ function App() {
   const [facilitatorRoleParticipantId, setFacilitatorRoleParticipantId] = useState<number | null>(null);
   const [facilitatorTeamRenameId, setFacilitatorTeamRenameId] = useState<number | null>(null);
   const [facilitatorTeamParticipantId, setFacilitatorTeamParticipantId] = useState<number | null>(null);
+  const [facilitatorRemovingParticipantId, setFacilitatorRemovingParticipantId] = useState<number | null>(null);
   const [creatingSession, setCreatingSession] = useState(false);
   const [renamingSession, setRenamingSession] = useState(false);
   const [isFacilitatorWorkspaceOpen, setIsFacilitatorWorkspaceOpen] = useState(
@@ -672,6 +674,30 @@ function App() {
     }
   };
 
+  const handleRemoveParticipant = async (
+    sessionCode: string,
+    participantId: number,
+  ): Promise<void> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return;
+    }
+
+    setFacilitatorActionError('');
+    setFacilitatorRemovingParticipantId(participantId);
+
+    try {
+      await deleteGameSessionParticipant(sessionCode, participantId, staffAuthHeader);
+      await syncAfterSessionMutation(sessionCode);
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось исключить участника из сессии.',
+      );
+    } finally {
+      setFacilitatorRemovingParticipantId(null);
+    }
+  };
+
   const handleSaveStages = async (
     sessionCode: string,
     request: GameSessionStageSettingsRequest,
@@ -1197,6 +1223,7 @@ function App() {
             inventorySaving={facilitatorInventorySaving}
             randomAssignmentLoading={facilitatorRandomRoleLoading}
             roleAssignmentParticipantId={facilitatorRoleParticipantId}
+            removingParticipantId={facilitatorRemovingParticipantId}
             error={facilitatorError}
             session={overviewState.session}
             sessions={sessionsState.sessions}
@@ -1208,6 +1235,7 @@ function App() {
             onRenameTeam={handleRenameTeam}
             onAutoAssignTeams={handleAutoAssignTeams}
             onAssignParticipantTeam={handleAssignParticipantTeam}
+            onRemoveParticipant={handleRemoveParticipant}
             onSaveStages={handleSaveStages}
             onSaveEconomySettings={handleSaveEconomySettings}
             onSaveInventorySettings={handleSaveInventorySettings}
