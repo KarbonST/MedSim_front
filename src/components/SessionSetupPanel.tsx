@@ -642,7 +642,7 @@ function SessionSetupPanel({
         )}
       >
         <div className="waiting-note">
-          <p>Стартовый бюджет и время этапа для всех команд.</p>
+          <p>Стартовый бюджет и временной ресурс для всех команд.</p>
         </div>
 
         <div className="setup-toolbar">
@@ -659,7 +659,7 @@ function SessionSetupPanel({
           </label>
 
           <label className="field compact-field stage-count-field">
-            <span>Время на этап</span>
+            <span>Временной ресурс команды</span>
             <input
               type="number"
               min="1"
@@ -683,7 +683,7 @@ function SessionSetupPanel({
 
         {!isEconomyDraftValid ? (
           <p className="participant-role-subtitle">
-            Укажите бюджет не меньше 0.01 и время на этап не меньше 1.
+            Укажите бюджет не меньше 0.01 и временной ресурс не меньше 1.
           </p>
         ) : null}
       </CollapsibleSection>
@@ -880,13 +880,13 @@ function SessionSetupPanel({
               <div className="stage-editor-header">
                 <strong>Этап {stage.stageNumber}</strong>
                 <span className="stage-editor-hint">
-                  Настройка длительности и доступных инструментов
+                  Настройка длительности таймера и доступных инструментов
                 </span>
               </div>
 
               <div className="stage-editor-grid">
                 <label className="field compact-field">
-                  <span>Время этапа, мин.</span>
+                  <span>Длительность этапа, мин.</span>
                   <input
                     type="number"
                     min="1"
