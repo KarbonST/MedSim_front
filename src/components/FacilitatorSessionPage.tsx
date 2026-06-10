@@ -115,8 +115,117 @@ interface SessionControlPanelProps {
   onRestartSession: (sessionCode: string) => void | Promise<void>;
 }
 
+type FacilitatorView =
+  | 'create-session'
+  | 'sessions'
+  | 'summary'
+  | 'economy'
+  | 'teams'
+  | 'stages'
+  | 'inventory'
+  | 'control'
+  | 'live'
+  | 'analytics';
+
+interface FacilitatorNavItem {
+  id: FacilitatorView;
+  label: string;
+  description: string;
+}
+
+const facilitatorWorkspaceNav: FacilitatorNavItem[] = [
+  {
+    id: 'create-session',
+    label: 'Новая сессия',
+    description: 'Создать игровую комнату',
+  },
+  {
+    id: 'sessions',
+    label: 'Список сессий',
+    description: 'Открыть и удалить комнаты',
+  },
+];
+
+const facilitatorSessionNav: FacilitatorNavItem[] = [
+  {
+    id: 'summary',
+    label: 'Сводка',
+    description: 'Статус, код и параметры',
+  },
+  {
+    id: 'economy',
+    label: 'Ресурсы команд',
+    description: 'Бюджет и временной ресурс',
+  },
+  {
+    id: 'teams',
+    label: 'Команды и роли',
+    description: 'Игроки, роли и дубли',
+  },
+  {
+    id: 'stages',
+    label: 'Этапы',
+    description: 'Длительность и инструменты',
+  },
+  {
+    id: 'inventory',
+    label: 'Склад',
+    description: 'Стартовые позиции команд',
+  },
+  {
+    id: 'control',
+    label: 'Управление игрой',
+    description: 'Таймер, этапы и запуск',
+  },
+  {
+    id: 'live',
+    label: 'Мониторинг',
+    description: 'Ход игры в реальном времени',
+  },
+  {
+    id: 'analytics',
+    label: 'Аналитика',
+    description: 'Итоги завершенной сессии',
+  },
+];
+
 function sortStages(stages: SessionStageSetting[]): SessionStageSetting[] {
   return [...stages].sort((left, right) => left.stageNumber - right.stageNumber);
+}
+
+function getDefaultSessionView(session: GameSessionParticipantsResponse): FacilitatorView {
+  if (session.sessionStatus === 'FINISHED') {
+    return 'analytics';
+  }
+
+  if (session.sessionStatus === 'LOBBY') {
+    return 'teams';
+  }
+
+  return 'live';
+}
+
+function isViewAvailable(view: FacilitatorView, session: GameSessionParticipantsResponse | null): boolean {
+  switch (view) {
+    case 'create-session':
+    case 'sessions':
+      return true;
+    case 'summary':
+      return session !== null;
+    case 'control':
+      return session !== null && session.sessionStatus !== 'FINISHED';
+    case 'economy':
+    case 'teams':
+    case 'stages':
+    case 'inventory':
+      return session !== null && session.sessionStatus === 'LOBBY';
+    case 'live':
+      return session !== null && session.sessionStatus !== 'LOBBY' && session.sessionStatus !== 'FINISHED';
+    case 'analytics':
+      return session !== null && session.sessionStatus === 'FINISHED';
+    default:
+      return false;
+  }
 }
 
 function SessionControlPanel({
@@ -420,6 +529,7 @@ function FacilitatorSessionPage({
   onDeleteSession,
   onBack,
 }: FacilitatorSessionPageProps) {
+  const [activeView, setActiveView] = useState<FacilitatorView>('sessions');
   const [creationName, setCreationName] = useState('');
   const [creationTeamCount, setCreationTeamCount] = useState('2');
   const [creationBudget, setCreationBudget] = useState('15.00');
@@ -429,6 +539,20 @@ function FacilitatorSessionPage({
   useEffect(() => {
     setRenameValue(session?.sessionName ?? '');
   }, [session?.sessionCode, session?.sessionName]);
+
+  useEffect(() => {
+    setActiveView((current) => {
+      if (!session) {
+        return current === 'create-session' || current === 'sessions' ? current : 'sessions';
+      }
+
+      if (isViewAvailable(current, session) && current !== 'create-session' && current !== 'sessions') {
+        return current;
+      }
+
+      return getDefaultSessionView(session);
+    });
+  }, [session?.sessionCode, session?.sessionStatus]);
 
   const handleCreateSession = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -471,13 +595,349 @@ function FacilitatorSessionPage({
   };
 
   const isLobby = session?.sessionStatus === 'LOBBY';
+  const availableSessionNav = facilitatorSessionNav.filter((item) => isViewAvailable(item.id, session));
+  const pageTitle = (() => {
+    switch (activeView) {
+      case 'create-session':
+        return 'Создание игровых комнат';
+      case 'sessions':
+        return 'Управление игровыми сессиями';
+      case 'analytics':
+        return 'Аналитика завершенной игры';
+      case 'live':
+        return 'Мониторинг запущенной игры';
+      case 'summary':
+      case 'economy':
+      case 'teams':
+      case 'stages':
+      case 'inventory':
+      case 'control':
+        return session
+          ? (session.sessionStatus === 'FINISHED'
+            ? 'Аналитика завершенной игры'
+            : isLobby
+              ? 'Контроль стартовой комнаты'
+              : 'Мониторинг запущенной игры')
+          : 'Управление игровыми сессиями';
+      default:
+        return 'Управление игровыми сессиями';
+    }
+  })();
+
+  const renderCreateSessionPanel = () => (
+    <CollapsibleSection
+      kicker="Новая сессия"
+      title="Создание игровой комнаты"
+      className="session-create-panel"
+      defaultExpanded
+    >
+      <form className="session-create-form" onSubmit={handleCreateSession}>
+        <label className="field">
+          <span>Название сессии</span>
+          <input
+            type="text"
+            placeholder="Например, Приёмное отделение"
+            value={creationName}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setCreationName(event.target.value)}
+          />
+        </label>
+
+        <label className="field compact-field team-count-creation-field">
+          <span>Количество команд</span>
+          <input
+            type="number"
+            min="2"
+            max="12"
+            value={creationTeamCount}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setCreationTeamCount(event.target.value)}
+          />
+        </label>
+
+        <label className="field compact-field team-count-creation-field">
+          <span>Стартовый бюджет</span>
+          <input
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={creationBudget}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setCreationBudget(event.target.value)}
+          />
+        </label>
+
+        <label className="field compact-field team-count-creation-field">
+          <span>Временной ресурс команды</span>
+          <input
+            type="number"
+            min="1"
+            value={creationStageTimeUnits}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setCreationStageTimeUnits(event.target.value)}
+          />
+        </label>
+
+        <button
+          type="submit"
+          className="primary-button"
+          disabled={creatingSession || !creationName.trim()}
+        >
+          {creatingSession ? 'Создание...' : 'Создать сессию'}
+        </button>
+      </form>
+
+      <div className="waiting-note compact-note">
+        <p>Название, команды и стартовые ресурсы. Код комнаты и 3 этапа создаются автоматически. По умолчанию: 15.00 бюджета и 15 единиц временного ресурса на команду.</p>
+      </div>
+    </CollapsibleSection>
+  );
+
+  const renderSessionsBoard = () => (
+    <CollapsibleSection
+      kicker="Активные сессии"
+      title="Управление игровыми комнатами"
+      className="sessions-board"
+      defaultExpanded
+      actions={(
+        <button type="button" className="secondary-button" onClick={onRefreshSessions}>
+          {sessionsLoading ? 'Обновление...' : 'Обновить сессии'}
+        </button>
+      )}
+    >
+      {sessions.length ? (
+        <div className="session-cards">
+          {sessions.map((sessionItem) => {
+            const isActionPending = actionSessionCode === sessionItem.sessionCode;
+            const isSelected = session?.sessionCode === sessionItem.sessionCode;
+
+            return (
+              <article
+                key={sessionItem.sessionId}
+                className={isSelected ? 'session-card selected session-card--interactive' : 'session-card session-card--interactive'}
+                onClick={() => {
+                  void onOpenSession(sessionItem.sessionCode);
+                }}
+              >
+                <div className="session-card-header">
+                  <div className="session-card-title">
+                    <strong>{sessionItem.sessionName}</strong>
+                    <span>{sessionItem.sessionCode}</span>
+                  </div>
+                  <span className="status-pill session-status-pill">{getSessionStatusLabel(sessionItem.sessionStatus)}</span>
+                </div>
+
+                <div className="session-card-metrics">
+                  <span>Игроков: {sessionItem.participantCount}</span>
+                  <span>Команд: {sessionItem.teamCount}</span>
+                  <span>Этапов: {sessionItem.stageCount}</span>
+                </div>
+
+                <div className="session-card-actions session-card-actions--two" onClick={(event) => event.stopPropagation()}>
+                  <button
+                    type="button"
+                    className="primary-button compact-button"
+                    onClick={() => onOpenSession(sessionItem.sessionCode)}
+                  >
+                    {isSelected ? 'Открыта' : 'Перейти'}
+                  </button>
+                  <button
+                    type="button"
+                    className="danger-button compact-button"
+                    onClick={() => onDeleteSession(sessionItem.sessionCode)}
+                    disabled={isActionPending}
+                  >
+                    {isActionPending ? 'Удаление...' : 'Удалить'}
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="waiting-note facilitator-empty-state">
+          <p>Создайте сессию, чтобы перейти к настройке.</p>
+        </div>
+      )}
+    </CollapsibleSection>
+  );
+
+  const renderSessionSummary = () => {
+    if (!session) {
+      return (
+        <div className="waiting-note facilitator-empty-state">
+          <p>Выберите сессию из списка.</p>
+        </div>
+      );
+    }
+
+    return (
+      <CollapsibleSection
+        kicker="Активная сессия"
+        title={isLobby ? 'Название и состояние комнаты' : 'Состояние запущенной игры'}
+        className="session-rename-inline-panel"
+        defaultExpanded
+      >
+        <div className="room-grid facilitator-summary-grid">
+          <article className="info-card">
+            <span>Сессия</span>
+            <strong>{session.sessionName}</strong>
+          </article>
+          <article className="info-card">
+            <span>Код</span>
+            <strong>{session.sessionCode}</strong>
+          </article>
+          <article className="info-card">
+            <span>Статус</span>
+            <strong>{getSessionStatusLabel(session.sessionStatus)}</strong>
+          </article>
+          <article className="info-card">
+            <span>Участники</span>
+            <strong>{session.participants.length}</strong>
+          </article>
+          <article className="info-card">
+            <span>Команды</span>
+            <strong>{session.teams.length}</strong>
+          </article>
+          <article className="info-card">
+            <span>Этапы</span>
+            <strong>{session.stages.length}</strong>
+          </article>
+          <article className="info-card">
+            <span>Стартовый бюджет</span>
+            <strong>{economySettings ? Number(economySettings.startingBudget).toFixed(2) : '—'}</strong>
+          </article>
+          <article className="info-card">
+            <span>Временной ресурс</span>
+            <strong>{economySettings ? economySettings.stageTimeUnits : '—'}</strong>
+          </article>
+        </div>
+
+        <div className="session-rename-inline-form">
+          <label className="field session-lookup-name-field">
+            <span>Название сессии</span>
+            <input
+              type="text"
+              placeholder="Введите новое название сессии"
+              value={renameValue}
+              onChange={(event) => setRenameValue(event.target.value)}
+              disabled={renamingSession}
+            />
+          </label>
+
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              void handleRenameSession();
+            }}
+            disabled={renamingSession || !renameValue.trim() || renameValue.trim() === session.sessionName}
+          >
+            {renamingSession ? 'Сохранение...' : 'Сохранить название'}
+          </button>
+        </div>
+      </CollapsibleSection>
+    );
+  };
+
+  const renderActivePanel = () => {
+    switch (activeView) {
+      case 'create-session':
+        return renderCreateSessionPanel();
+      case 'sessions':
+        return renderSessionsBoard();
+      case 'summary':
+        return renderSessionSummary();
+      case 'economy':
+      case 'teams':
+      case 'stages':
+      case 'inventory':
+        return session ? (
+          <SessionSetupPanel
+            session={session}
+            visibleSection={activeView}
+            loading={loading}
+            autoTeamAssignmentLoading={autoTeamAssignmentLoading}
+            randomAssignmentLoading={randomAssignmentLoading}
+            savingStages={setupLoading}
+            economySettings={economySettings}
+            economyLoading={economyLoading}
+            economySaving={economySaving}
+            inventorySaving={inventorySaving}
+            teamRenameId={teamRenameId}
+            teamAssignmentParticipantId={teamAssignmentParticipantId}
+            roleAssignmentParticipantId={roleAssignmentParticipantId}
+            removingParticipantId={removingParticipantId}
+            onRenameTeam={onRenameTeam}
+            onAutoAssignTeams={onAutoAssignTeams}
+            onAssignParticipantTeam={onAssignParticipantTeam}
+            onRemoveParticipant={onRemoveParticipant}
+            onSaveStages={onSaveStages}
+            onSaveEconomySettings={onSaveEconomySettings}
+            onSaveInventorySettings={onSaveInventorySettings}
+            onRandomizeInventory={onRandomizeInventory}
+            onAssignRandomRoles={onAssignRandomRoles}
+            onAssignManualRole={onAssignManualRole}
+          />
+        ) : (
+          <div className="waiting-note facilitator-empty-state">
+            <p>Сначала выберите сессию.</p>
+          </div>
+        );
+      case 'control':
+        return session ? (
+          <SessionControlPanel
+            session={session}
+            actionSessionCode={actionSessionCode}
+            onSelectRuntimeStage={onSelectRuntimeStage}
+            onStartRuntimeTimer={onStartRuntimeTimer}
+            onPauseRuntimeTimer={onPauseRuntimeTimer}
+            onResetRuntimeTimer={onResetRuntimeTimer}
+            onStartSession={onStartSession}
+            onPauseSession={onPauseSession}
+            onFinishSession={onFinishSession}
+            onRestartSession={onRestartSession}
+          />
+        ) : (
+          <div className="waiting-note facilitator-empty-state">
+            <p>Сначала выберите сессию.</p>
+          </div>
+        );
+      case 'live':
+        return session ? (
+          <FacilitatorLiveDashboard
+            session={session}
+            loading={loading}
+            authHeader={authHeader}
+            economyOverview={economyOverview}
+            kanbanOverview={kanbanOverview}
+          />
+        ) : (
+          <div className="waiting-note facilitator-empty-state">
+            <p>Сначала выберите сессию.</p>
+          </div>
+        );
+      case 'analytics':
+        return session ? (
+          <FacilitatorPostGameAnalytics
+            sessionCode={session.sessionCode}
+            authHeader={authHeader}
+            analytics={analyticsOverview}
+            loading={analyticsLoading}
+            onRefreshAnalytics={onRefreshAnalytics}
+          />
+        ) : (
+          <div className="waiting-note facilitator-empty-state">
+            <p>Сначала выберите завершенную сессию.</p>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <section className="session-room facilitator-room">
       <BrandHeader
         compact
         eyebrow="Панель ведущего"
-        title={isLobby ? 'Контроль стартовой комнаты' : 'Мониторинг запущенной игры'}
+        title={pageTitle}
       />
 
       <div className="room-hero">
@@ -488,288 +948,59 @@ function FacilitatorSessionPage({
         <span className="status-pill">Ведущий</span>
       </div>
 
-      <CollapsibleSection
-        kicker="Новая сессия"
-        title="Создание игровой комнаты"
-        className="session-create-panel"
-        defaultExpanded={false}
-      >
-        <form className="session-create-form" onSubmit={handleCreateSession}>
-          <label className="field">
-            <span>Название сессии</span>
-            <input
-              type="text"
-              placeholder="Например, Приёмное отделение"
-              value={creationName}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setCreationName(event.target.value)}
-            />
-          </label>
-
-          <label className="field compact-field team-count-creation-field">
-            <span>Количество команд</span>
-            <input
-              type="number"
-              min="2"
-              max="12"
-              value={creationTeamCount}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setCreationTeamCount(event.target.value)}
-            />
-          </label>
-
-          <label className="field compact-field team-count-creation-field">
-            <span>Стартовый бюджет</span>
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={creationBudget}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setCreationBudget(event.target.value)}
-            />
-          </label>
-
-          <label className="field compact-field team-count-creation-field">
-            <span>Время на этап</span>
-            <input
-              type="number"
-              min="1"
-              value={creationStageTimeUnits}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setCreationStageTimeUnits(event.target.value)}
-            />
-          </label>
-
-          <button
-            type="submit"
-            className="primary-button"
-            disabled={creatingSession || !creationName.trim()}
-          >
-            {creatingSession ? 'Создание...' : 'Создать сессию'}
-          </button>
-        </form>
-
-        <div className="waiting-note compact-note">
-          <p>Название, команды и стартовые ресурсы. Код комнаты и 3 этапа создаются автоматически. По умолчанию: 15.00 бюджета и 15 единиц временного ресурса на команду.</p>
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection
-        kicker="Активные сессии"
-        title="Управление игровыми комнатами"
-        className="sessions-board"
-        defaultExpanded
-        actions={(
-          <button type="button" className="secondary-button" onClick={onRefreshSessions}>
-            {sessionsLoading ? 'Обновление...' : 'Обновить сессии'}
-          </button>
-        )}
-      >
-        {sessions.length ? (
-          <div className="session-cards">
-            {sessions.map((sessionItem) => {
-              const isActionPending = actionSessionCode === sessionItem.sessionCode;
-              const isSelected = session?.sessionCode === sessionItem.sessionCode;
-
-              return (
-                <article
-                  key={sessionItem.sessionId}
-                  className={isSelected ? 'session-card selected session-card--interactive' : 'session-card session-card--interactive'}
-                  onClick={() => {
-                    void onOpenSession(sessionItem.sessionCode);
-                  }}
-                >
-                  <div className="session-card-header">
-                    <div className="session-card-title">
-                      <strong>{sessionItem.sessionName}</strong>
-                      <span>{sessionItem.sessionCode}</span>
-                    </div>
-                    <span className="status-pill session-status-pill">{getSessionStatusLabel(sessionItem.sessionStatus)}</span>
-                  </div>
-
-                  <div className="session-card-metrics">
-                    <span>Игроков: {sessionItem.participantCount}</span>
-                    <span>Команд: {sessionItem.teamCount}</span>
-                    <span>Этапов: {sessionItem.stageCount}</span>
-                  </div>
-
-                  <div className="session-card-actions session-card-actions--two" onClick={(event) => event.stopPropagation()}>
-                    <button
-                      type="button"
-                      className="primary-button compact-button"
-                      onClick={() => onOpenSession(sessionItem.sessionCode)}
-                    >
-                      {isSelected ? 'Открыта' : 'Перейти'}
-                    </button>
-                    <button
-                      type="button"
-                      className="danger-button compact-button"
-                      onClick={() => onDeleteSession(sessionItem.sessionCode)}
-                      disabled={isActionPending}
-                    >
-                      {isActionPending ? 'Удаление...' : 'Удалить'}
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="waiting-note facilitator-empty-state">
-            <p>Создайте сессию, чтобы перейти к настройке.</p>
-          </div>
-        )}
-      </CollapsibleSection>
-
-      {session ? (
-        <CollapsibleSection
-          kicker="Активная сессия"
-          title={isLobby ? 'Название и состояние комнаты' : 'Состояние запущенной игры'}
-          className="session-rename-inline-panel"
-          defaultExpanded
-        >
-          <div className="room-grid facilitator-summary-grid">
-            <article className="info-card">
-              <span>Сессия</span>
-              <strong>{session.sessionName}</strong>
-            </article>
-            <article className="info-card">
-              <span>Код</span>
-              <strong>{session.sessionCode}</strong>
-            </article>
-            <article className="info-card">
-              <span>Статус</span>
-              <strong>{getSessionStatusLabel(session.sessionStatus)}</strong>
-            </article>
-            <article className="info-card">
-              <span>Участники</span>
-              <strong>{session.participants.length}</strong>
-            </article>
-            <article className="info-card">
-              <span>Команды</span>
-              <strong>{session.teams.length}</strong>
-            </article>
-            <article className="info-card">
-              <span>Этапы</span>
-              <strong>{session.stages.length}</strong>
-            </article>
-            <article className="info-card">
-              <span>Стартовый бюджет</span>
-              <strong>{economySettings ? Number(economySettings.startingBudget).toFixed(2) : '—'}</strong>
-            </article>
-            <article className="info-card">
-              <span>Время на этап</span>
-              <strong>{economySettings ? economySettings.stageTimeUnits : '—'}</strong>
-            </article>
-          </div>
-
-          <div className="session-rename-inline-form">
-            <label className="field session-lookup-name-field">
-              <span>Название сессии</span>
-              <input
-                type="text"
-                placeholder="Введите новое название сессии"
-                value={renameValue}
-                onChange={(event) => setRenameValue(event.target.value)}
-                disabled={renamingSession}
-              />
-            </label>
-
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => {
-                void handleRenameSession();
-              }}
-              disabled={renamingSession || !renameValue.trim() || renameValue.trim() === session.sessionName}
-            >
-              {renamingSession ? 'Сохранение...' : 'Сохранить название'}
-            </button>
-          </div>
-        </CollapsibleSection>
-      ) : null}
-
       {error ? <p className="form-error">{error}</p> : null}
 
-      {session ? (
-        isLobby ? (
-          <>
-            <SessionSetupPanel
-              session={session}
-              loading={loading}
-              autoTeamAssignmentLoading={autoTeamAssignmentLoading}
-              randomAssignmentLoading={randomAssignmentLoading}
-              savingStages={setupLoading}
-              economySettings={economySettings}
-              economyLoading={economyLoading}
-              economySaving={economySaving}
-              inventorySaving={inventorySaving}
-              teamRenameId={teamRenameId}
-              teamAssignmentParticipantId={teamAssignmentParticipantId}
-              roleAssignmentParticipantId={roleAssignmentParticipantId}
-              removingParticipantId={removingParticipantId}
-              onRenameTeam={onRenameTeam}
-              onAutoAssignTeams={onAutoAssignTeams}
-              onAssignParticipantTeam={onAssignParticipantTeam}
-              onRemoveParticipant={onRemoveParticipant}
-              onSaveStages={onSaveStages}
-              onSaveEconomySettings={onSaveEconomySettings}
-              onSaveInventorySettings={onSaveInventorySettings}
-              onRandomizeInventory={onRandomizeInventory}
-              onAssignRandomRoles={onAssignRandomRoles}
-              onAssignManualRole={onAssignManualRole}
-            />
-            <SessionControlPanel
-              session={session}
-              actionSessionCode={actionSessionCode}
-              onSelectRuntimeStage={onSelectRuntimeStage}
-              onStartRuntimeTimer={onStartRuntimeTimer}
-              onPauseRuntimeTimer={onPauseRuntimeTimer}
-              onResetRuntimeTimer={onResetRuntimeTimer}
-              onStartSession={onStartSession}
-              onPauseSession={onPauseSession}
-              onFinishSession={onFinishSession}
-              onRestartSession={onRestartSession}
-            />
-          </>
-        ) : (
-          <>
-            {session.sessionStatus === 'FINISHED' ? (
-              <FacilitatorPostGameAnalytics
-                sessionCode={session.sessionCode}
-                authHeader={authHeader}
-                analytics={analyticsOverview}
-                loading={analyticsLoading}
-                onRefreshAnalytics={onRefreshAnalytics}
-              />
-            ) : null}
-            <FacilitatorLiveDashboard
-              session={session}
-              loading={loading}
-              authHeader={authHeader}
-              economyOverview={economyOverview}
-              kanbanOverview={kanbanOverview}
-            />
-            <SessionControlPanel
-              session={session}
-              actionSessionCode={actionSessionCode}
-              onSelectRuntimeStage={onSelectRuntimeStage}
-              onStartRuntimeTimer={onStartRuntimeTimer}
-              onPauseRuntimeTimer={onPauseRuntimeTimer}
-              onResetRuntimeTimer={onResetRuntimeTimer}
-              onStartSession={onStartSession}
-              onPauseSession={onPauseSession}
-              onFinishSession={onFinishSession}
-              onRestartSession={onRestartSession}
-            />
-          </>
-        )
-      ) : (
-        <div className="waiting-note facilitator-empty-state">
-          <p>Выберите сессию из списка.</p>
-        </div>
-      )}
+      <div className="facilitator-workspace">
+        <aside className="facilitator-sidebar">
+          <section className="facilitator-sidebar-panel">
+            <p className="section-kicker">Разделы</p>
+            <div className="facilitator-sidebar-nav">
+              {facilitatorWorkspaceNav.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={activeView === item.id ? 'facilitator-nav-button active' : 'facilitator-nav-button'}
+                  onClick={() => setActiveView(item.id)}
+                >
+                  <strong>{item.label}</strong>
+                  <span>{item.description}</span>
+                </button>
+              ))}
+            </div>
+          </section>
 
-      <button type="button" className="secondary-button back-button" onClick={onBack}>
-        Вернуться ко входу
-      </button>
+          {session ? (
+            <section className="facilitator-sidebar-panel facilitator-sidebar-panel--session">
+              <p className="section-kicker">Текущая сессия</p>
+              <strong className="facilitator-sidebar-session-name">{session.sessionName}</strong>
+              <span className="facilitator-sidebar-session-meta">
+                {session.sessionCode} · {getSessionStatusLabel(session.sessionStatus)}
+              </span>
+              <div className="facilitator-sidebar-nav">
+                {availableSessionNav.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={activeView === item.id ? 'facilitator-nav-button active' : 'facilitator-nav-button'}
+                    onClick={() => setActiveView(item.id)}
+                  >
+                    <strong>{item.label}</strong>
+                    <span>{item.description}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          <button type="button" className="secondary-button back-button facilitator-sidebar-back" onClick={onBack}>
+            Вернуться ко входу
+          </button>
+        </aside>
+
+        <div className="facilitator-content">
+          {renderActivePanel()}
+        </div>
+      </div>
     </section>
   );
 }

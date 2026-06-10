@@ -16,6 +16,7 @@ import CollapsibleSection from './CollapsibleSection';
 
 interface SessionSetupPanelProps {
   session: GameSessionParticipantsResponse;
+  visibleSection?: 'all' | 'economy' | 'teams' | 'stages' | 'inventory';
   loading: boolean;
   autoTeamAssignmentLoading: boolean;
   randomAssignmentLoading: boolean;
@@ -191,6 +192,7 @@ function buildTeamRoleParticipantGroups(
 
 function SessionSetupPanel({
   session,
+  visibleSection = 'all',
   loading,
   autoTeamAssignmentLoading,
   randomAssignmentLoading,
@@ -629,389 +631,397 @@ function SessionSetupPanel({
 
   return (
     <div className="session-setup-stack">
-      <CollapsibleSection
-        kicker="Стартовые ресурсы"
-        title="Бюджет и время команд"
-        defaultExpanded
-        badge={(
-          <span className="status-pill subtle-status-pill">
-            {economySettings
-              ? `Бюджет: ${Number(economySettings.startingBudget).toFixed(2)} · Время: ${economySettings.stageTimeUnits}`
-              : 'Загрузка...'}
-          </span>
-        )}
-      >
-        <div className="waiting-note">
-          <p>Стартовый бюджет и временной ресурс для всех команд.</p>
-        </div>
+      {(visibleSection === 'all' || visibleSection === 'economy') ? (
+        <CollapsibleSection
+          kicker="Стартовые ресурсы"
+          title="Бюджет и время команд"
+          defaultExpanded
+          badge={(
+            <span className="status-pill subtle-status-pill">
+              {economySettings
+                ? `Бюджет: ${Number(economySettings.startingBudget).toFixed(2)} · Время: ${economySettings.stageTimeUnits}`
+                : 'Загрузка...'}
+            </span>
+          )}
+        >
+          <div className="waiting-note">
+            <p>Стартовый бюджет и временной ресурс для всех команд.</p>
+          </div>
 
-        <div className="setup-toolbar">
-          <label className="field compact-field stage-count-field">
-            <span>Стартовый бюджет</span>
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={budgetDraft}
-              onChange={(event) => setBudgetDraft(event.target.value)}
-              disabled={!isLobby || economySaving || economyLoading}
-            />
-          </label>
+          <div className="setup-toolbar">
+            <label className="field compact-field stage-count-field">
+              <span>Стартовый бюджет</span>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={budgetDraft}
+                onChange={(event) => setBudgetDraft(event.target.value)}
+                disabled={!isLobby || economySaving || economyLoading}
+              />
+            </label>
 
-          <label className="field compact-field stage-count-field">
-            <span>Временной ресурс команды</span>
-            <input
-              type="number"
-              min="1"
-              value={stageTimeUnitsDraft}
-              onChange={(event) => setStageTimeUnitsDraft(event.target.value)}
-              disabled={!isLobby || economySaving || economyLoading}
-            />
-          </label>
+            <label className="field compact-field stage-count-field">
+              <span>Временной ресурс команды</span>
+              <input
+                type="number"
+                min="1"
+                value={stageTimeUnitsDraft}
+                onChange={(event) => setStageTimeUnitsDraft(event.target.value)}
+                disabled={!isLobby || economySaving || economyLoading}
+              />
+            </label>
 
-          <button
-            type="button"
-            className="primary-button"
-            onClick={() => {
-              void handleSaveEconomy();
-            }}
-            disabled={!isLobby || economySaving || economyLoading || !economySettings || !isEconomyDraftValid || !isEconomyDraftChanged}
-          >
-            {economySaving ? 'Сохранение...' : 'Сохранить ресурсы'}
-          </button>
-        </div>
-
-        {!isEconomyDraftValid ? (
-          <p className="participant-role-subtitle">
-            Укажите бюджет не меньше 0.01 и временной ресурс не меньше 1.
-          </p>
-        ) : null}
-      </CollapsibleSection>
-
-      <CollapsibleSection
-        kicker="Команды и роли"
-        title="Настройка команд"
-        defaultExpanded
-        actions={(
-          <>
             <button
               type="button"
-              className="secondary-button"
+              className="primary-button"
               onClick={() => {
-                void onAutoAssignTeams(session.sessionCode);
+                void handleSaveEconomy();
               }}
-              disabled={!isLobby || autoTeamAssignmentLoading || loading || session.participants.length === 0}
+              disabled={!isLobby || economySaving || economyLoading || !economySettings || !isEconomyDraftValid || !isEconomyDraftChanged}
             >
-              {autoTeamAssignmentLoading ? 'Распределение...' : 'Распределить по командам случайно'}
+              {economySaving ? 'Сохранение...' : 'Сохранить ресурсы'}
             </button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => {
-                void onAssignRandomRoles(session.sessionCode);
-              }}
-              disabled={!isLobby || randomAssignmentLoading || loading || assignedTeamParticipantsCount < 3}
-            >
-              {randomAssignmentLoading ? 'Распределение...' : 'Распределить роли случайно'}
-            </button>
-          </>
-        )}
-      >
-        <div className="waiting-note">
-          <p>Распределение игроков, команд и ролей.</p>
-        </div>
+          </div>
 
-        <div className="team-role-groups">
-          {teamRoleParticipantGroups.map((group) => {
-            const isGroupCollapsed = collapsedTeamRoleGroupKeys.has(group.key);
-            const assignedRolesCount = group.participants.filter((participant) => participant.gameRole).length;
-            const draftName = group.team ? (teamNameDrafts[group.team.teamId] ?? group.team.teamName) : '';
+          {!isEconomyDraftValid ? (
+            <p className="participant-role-subtitle">
+              Укажите бюджет не меньше 0.01 и временной ресурс не меньше 1.
+            </p>
+          ) : null}
+        </CollapsibleSection>
+      ) : null}
 
-            return (
-              <article
-                key={group.key}
-                className={`team-role-group${isGroupCollapsed ? '' : ' team-role-group--expanded'}`}
+      {(visibleSection === 'all' || visibleSection === 'teams') ? (
+        <CollapsibleSection
+          kicker="Команды и роли"
+          title="Настройка команд"
+          defaultExpanded
+          actions={(
+            <>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => {
+                  void onAutoAssignTeams(session.sessionCode);
+                }}
+                disabled={!isLobby || autoTeamAssignmentLoading || loading || session.participants.length === 0}
               >
-                <button
-                  type="button"
-                  className="team-role-group-toggle"
-                  onClick={() => toggleTeamRoleGroupCollapsed(group.key)}
-                  aria-expanded={!isGroupCollapsed}
-                >
-                  <span className="team-role-group-title">
-                    <strong>{group.title}</strong>
-                    <span>
-                      {group.participants.length > 0
-                        ? `Игроков: ${group.participants.length} · Ролей: ${assignedRolesCount}/${group.participants.length}`
-                        : 'Пока нет игроков'}
-                    </span>
-                  </span>
-                  <span
-                    className={`collapsible-section-chevron team-role-group-chevron${isGroupCollapsed ? '' : ' collapsible-section-chevron--expanded'}`}
-                    aria-hidden="true"
-                  />
-                </button>
+                {autoTeamAssignmentLoading ? 'Распределение...' : 'Распределить по командам случайно'}
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => {
+                  void onAssignRandomRoles(session.sessionCode);
+                }}
+                disabled={!isLobby || randomAssignmentLoading || loading || assignedTeamParticipantsCount < 3}
+              >
+                {randomAssignmentLoading ? 'Распределение...' : 'Распределить роли случайно'}
+              </button>
+            </>
+          )}
+        >
+          <div className="waiting-note">
+            <p>Распределение игроков, команд и ролей.</p>
+          </div>
 
-                {!isGroupCollapsed ? (
-                  <div className="team-role-group-body">
-                    {group.team ? (
-                      <div className="team-edit-form team-role-name-form">
-                        <label className="field compact-field">
-                          <span>Название команды</span>
-                          <input
-                            type="text"
-                            value={draftName}
-                            onChange={(event) => {
+          <div className="team-role-groups">
+            {teamRoleParticipantGroups.map((group) => {
+              const isGroupCollapsed = collapsedTeamRoleGroupKeys.has(group.key);
+              const assignedRolesCount = group.participants.filter((participant) => participant.gameRole).length;
+              const draftName = group.team ? (teamNameDrafts[group.team.teamId] ?? group.team.teamName) : '';
+
+              return (
+                <article
+                  key={group.key}
+                  className={`team-role-group${isGroupCollapsed ? '' : ' team-role-group--expanded'}`}
+                >
+                  <button
+                    type="button"
+                    className="team-role-group-toggle"
+                    onClick={() => toggleTeamRoleGroupCollapsed(group.key)}
+                    aria-expanded={!isGroupCollapsed}
+                  >
+                    <span className="team-role-group-title">
+                      <strong>{group.title}</strong>
+                      <span>
+                        {group.participants.length > 0
+                          ? `Игроков: ${group.participants.length} · Ролей: ${assignedRolesCount}/${group.participants.length}`
+                          : 'Пока нет игроков'}
+                      </span>
+                    </span>
+                    <span
+                      className={`collapsible-section-chevron team-role-group-chevron${isGroupCollapsed ? '' : ' collapsible-section-chevron--expanded'}`}
+                      aria-hidden="true"
+                    />
+                  </button>
+
+                  {!isGroupCollapsed ? (
+                    <div className="team-role-group-body">
+                      {group.team ? (
+                        <div className="team-edit-form team-role-name-form">
+                          <label className="field compact-field">
+                            <span>Название команды</span>
+                            <input
+                              type="text"
+                              value={draftName}
+                              onChange={(event) => {
+                                if (!group.team) {
+                                  return;
+                                }
+
+                                setTeamNameDrafts((current) => ({
+                                  ...current,
+                                  [group.team.teamId]: event.target.value,
+                                }));
+                              }}
+                              disabled={!isLobby || teamRenameId === group.team.teamId}
+                            />
+                          </label>
+
+                          <button
+                            type="button"
+                            className="primary-button compact-button"
+                            onClick={() => {
                               if (!group.team) {
                                 return;
                               }
 
-                              setTeamNameDrafts((current) => ({
-                                ...current,
-                                [group.team.teamId]: event.target.value,
-                              }));
+                              void handleRenameTeam(group.team.teamId, group.team.teamName);
                             }}
-                            disabled={!isLobby || teamRenameId === group.team.teamId}
-                          />
-                        </label>
-
-                        <button
-                          type="button"
-                          className="primary-button compact-button"
-                          onClick={() => {
-                            if (!group.team) {
-                              return;
+                            disabled={
+                              !isLobby
+                              || teamRenameId === group.team.teamId
+                              || !draftName.trim()
+                              || draftName.trim() === group.team.teamName
                             }
+                          >
+                            {teamRenameId === group.team.teamId ? 'Сохранение...' : 'Сохранить название'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="waiting-note waiting-note-inline">
+                          <p>Игроки без команды.</p>
+                        </div>
+                      )}
 
-                            void handleRenameTeam(group.team.teamId, group.team.teamName);
-                          }}
-                          disabled={
-                            !isLobby
-                            || teamRenameId === group.team.teamId
-                            || !draftName.trim()
-                            || draftName.trim() === group.team.teamName
-                          }
-                        >
-                          {teamRenameId === group.team.teamId ? 'Сохранение...' : 'Сохранить название'}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="waiting-note waiting-note-inline">
-                        <p>Игроки без команды.</p>
-                      </div>
-                    )}
+                      {group.participants.length > 0 ? (
+                        <div className="participants-list role-management-list">
+                          {group.participants.map((participant) => renderRoleParticipantCard(participant))}
+                        </div>
+                      ) : (
+                        <div className="waiting-note waiting-note-inline">
+                          <p>Команда пока пустая.</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        </CollapsibleSection>
+      ) : null}
 
-                    {group.participants.length > 0 ? (
-                      <div className="participants-list role-management-list">
-                        {group.participants.map((participant) => renderRoleParticipantCard(participant))}
-                      </div>
-                    ) : (
-                      <div className="waiting-note waiting-note-inline">
-                        <p>Команда пока пустая.</p>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
+      {(visibleSection === 'all' || visibleSection === 'stages') ? (
+        <CollapsibleSection
+          kicker="Параметры игры"
+          title="Настройка этапов сессии"
+          defaultExpanded={false}
+          badge={(
+            <span className="status-pill subtle-status-pill">
+              Этапов: {DEFAULT_SESSION_STAGE_COUNT}
+            </span>
+          )}
+        >
+          <div className="setup-toolbar">
+            <div className="waiting-note waiting-note-inline fixed-stage-note">
+              <p>Этапов всегда 3. Меняются только время и задачи.</p>
+            </div>
+
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => {
+                void handleSaveStages();
+              }}
+              disabled={!isLobby || savingStages || loading || !isProblemDistributionValid}
+            >
+              {savingStages ? 'Сохранение...' : 'Сохранить этапы'}
+            </button>
+
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={toggleManualProblemDistribution}
+              disabled={!isLobby || savingStages}
+            >
+              {manualProblemDistribution ? 'Автоматическое распределение' : 'Ручное распределение задач'}
+            </button>
+          </div>
+
+          <div className="waiting-note compact-note">
+            <p>
+              {manualProblemDistribution
+                ? `Распределено ${distributedProblemCount} из ${totalProblemCount}. ${
+                  remainingProblemCount === 0
+                    ? 'Можно сохранять.'
+                    : remainingProblemCount > 0
+                      ? `Осталось распределить ${remainingProblemCount}.`
+                      : `Лишних задач: ${Math.abs(remainingProblemCount)}.`
+                }`
+                : `Задачи распределятся автоматически и почти поровну: ${visibleProblemDistribution.join(' / ')}.`}
+            </p>
+          </div>
+
+          {!isLobby ? (
+            <div className="waiting-note">
+              <p>После старта этапы заблокированы.</p>
+            </div>
+          ) : null}
+
+          <div className="stage-editors">
+            {stageDrafts.map((stage, index) => (
+              <article key={stage.stageNumber} className="stage-editor-card">
+                <div className="stage-editor-header">
+                  <strong>Этап {stage.stageNumber}</strong>
+                  <span className="stage-editor-hint">
+                    Настройка длительности таймера и доступных инструментов
+                  </span>
+                </div>
+
+                <div className="stage-editor-grid">
+                  <label className="field compact-field">
+                    <span>Длительность этапа, мин.</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={stage.durationMinutes}
+                      onChange={(event) => {
+                        const nextValue = Number.parseInt(event.target.value, 10);
+
+                        if (Number.isNaN(nextValue) || nextValue < 1) {
+                          return;
+                        }
+
+                        updateStageDraft(stage.stageNumber, 'durationMinutes', nextValue);
+                      }}
+                      disabled={!isLobby || savingStages}
+                    />
+                  </label>
+
+                  <label className="field compact-field">
+                    <span>Инструменты этапа</span>
+                    <select
+                      value={stage.interactionMode}
+                      onChange={(event) => {
+                        updateStageDraft(
+                          stage.stageNumber,
+                          'interactionMode',
+                          event.target.value as StageInteractionMode,
+                        );
+                      }}
+                      disabled={!isLobby || savingStages}
+                    >
+                      {stageInteractionModes.map((mode) => (
+                        <option key={mode.value} value={mode.value}>
+                          {mode.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="field compact-field">
+                    <span>Задач на этапе</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={manualProblemDistribution ? stage.problemCount ?? 0 : autoProblemDistribution[index] ?? 0}
+                      onChange={(event) => {
+                        const nextValue = Number.parseInt(event.target.value, 10);
+
+                        if (Number.isNaN(nextValue) || nextValue < 0) {
+                          return;
+                        }
+
+                        updateStageDraft(stage.stageNumber, 'problemCount', nextValue);
+                      }}
+                      disabled={!isLobby || savingStages || !manualProblemDistribution}
+                    />
+                  </label>
+                </div>
+
+                <p className="stage-editor-description">
+                  {stageInteractionModes.find((mode) => mode.value === stage.interactionMode)?.hint}
+                </p>
               </article>
-            );
-          })}
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection
-        kicker="Параметры игры"
-        title="Настройка этапов сессии"
-        defaultExpanded={false}
-        badge={(
-          <span className="status-pill subtle-status-pill">
-            Этапов: {DEFAULT_SESSION_STAGE_COUNT}
-          </span>
-        )}
-      >
-        <div className="setup-toolbar">
-          <div className="waiting-note waiting-note-inline fixed-stage-note">
-            <p>Этапов всегда 3. Меняются только время и задачи.</p>
+            ))}
           </div>
+        </CollapsibleSection>
+      ) : null}
 
-          <button
-            type="button"
-            className="primary-button"
-            onClick={() => {
-              void handleSaveStages();
-            }}
-            disabled={!isLobby || savingStages || loading || !isProblemDistributionValid}
-          >
-            {savingStages ? 'Сохранение...' : 'Сохранить этапы'}
-          </button>
-
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={toggleManualProblemDistribution}
-            disabled={!isLobby || savingStages}
-          >
-            {manualProblemDistribution ? 'Автоматическое распределение' : 'Ручное распределение задач'}
-          </button>
-        </div>
-
-        <div className="waiting-note compact-note">
-          <p>
-            {manualProblemDistribution
-              ? `Распределено ${distributedProblemCount} из ${totalProblemCount}. ${
-                remainingProblemCount === 0
-                  ? 'Можно сохранять.'
-                  : remainingProblemCount > 0
-                    ? `Осталось распределить ${remainingProblemCount}.`
-                    : `Лишних задач: ${Math.abs(remainingProblemCount)}.`
-              }`
-              : `Задачи распределятся автоматически и почти поровну: ${visibleProblemDistribution.join(' / ')}.`}
-          </p>
-        </div>
-
-        {!isLobby ? (
+      {(visibleSection === 'all' || visibleSection === 'inventory') ? (
+        <CollapsibleSection
+          kicker="Ресурсы"
+          title="Стартовый склад"
+          defaultExpanded={false}
+          badge={(
+            <span className="status-pill subtle-status-pill">
+              Позиций: {inventoryItems.length}
+            </span>
+          )}
+        >
           <div className="waiting-note">
-            <p>После старта этапы заблокированы.</p>
+            <p>Одинаковый стартовый склад для всех команд.</p>
           </div>
-        ) : null}
 
-        <div className="stage-editors">
-          {stageDrafts.map((stage, index) => (
-            <article key={stage.stageNumber} className="stage-editor-card">
-              <div className="stage-editor-header">
-                <strong>Этап {stage.stageNumber}</strong>
-                <span className="stage-editor-hint">
-                  Настройка длительности таймера и доступных инструментов
-                </span>
-              </div>
+          <div className="setup-toolbar">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => {
+                void onRandomizeInventory(session.sessionCode);
+              }}
+              disabled={!isLobby || inventorySaving || loading}
+            >
+              {inventorySaving ? 'Обновление...' : 'Сформировать случайно'}
+            </button>
 
-              <div className="stage-editor-grid">
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => {
+                void handleSaveInventory();
+              }}
+              disabled={!isLobby || inventorySaving || loading || !isInventoryDraftValid}
+            >
+              {inventorySaving ? 'Сохранение...' : 'Сохранить склад'}
+            </button>
+          </div>
+
+          {!isInventoryDraftValid ? (
+            <p className="form-error">Количество на складе должно быть целым числом от 0 и выше.</p>
+          ) : null}
+
+          <div className="team-inventory-grid">
+            {inventoryItems.map((item) => (
+              <article key={item.itemName} className="inventory-item-card">
                 <label className="field compact-field">
-                  <span>Длительность этапа, мин.</span>
-                  <input
-                    type="number"
-                    min="1"
-                    value={stage.durationMinutes}
-                    onChange={(event) => {
-                      const nextValue = Number.parseInt(event.target.value, 10);
-
-                      if (Number.isNaN(nextValue) || nextValue < 1) {
-                        return;
-                      }
-
-                      updateStageDraft(stage.stageNumber, 'durationMinutes', nextValue);
-                    }}
-                    disabled={!isLobby || savingStages}
-                  />
-                </label>
-
-                <label className="field compact-field">
-                  <span>Инструменты этапа</span>
-                  <select
-                    value={stage.interactionMode}
-                    onChange={(event) => {
-                      updateStageDraft(
-                        stage.stageNumber,
-                        'interactionMode',
-                        event.target.value as StageInteractionMode,
-                      );
-                    }}
-                    disabled={!isLobby || savingStages}
-                  >
-                    {stageInteractionModes.map((mode) => (
-                      <option key={mode.value} value={mode.value}>
-                        {mode.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="field compact-field">
-                  <span>Задач на этапе</span>
+                  <span>{item.itemName}</span>
                   <input
                     type="number"
                     min="0"
-                    value={manualProblemDistribution ? stage.problemCount ?? 0 : autoProblemDistribution[index] ?? 0}
-                    onChange={(event) => {
-                      const nextValue = Number.parseInt(event.target.value, 10);
-
-                      if (Number.isNaN(nextValue) || nextValue < 0) {
-                        return;
-                      }
-
-                      updateStageDraft(stage.stageNumber, 'problemCount', nextValue);
-                    }}
-                    disabled={!isLobby || savingStages || !manualProblemDistribution}
+                    value={inventoryDrafts[item.itemName] ?? '0'}
+                    onChange={(event) => updateInventoryDraft(item.itemName, event.target.value)}
+                    disabled={!isLobby || inventorySaving}
                   />
                 </label>
-              </div>
-
-              <p className="stage-editor-description">
-                {stageInteractionModes.find((mode) => mode.value === stage.interactionMode)?.hint}
-              </p>
-            </article>
-          ))}
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection
-        kicker="Ресурсы"
-        title="Стартовый склад"
-        defaultExpanded={false}
-        badge={(
-          <span className="status-pill subtle-status-pill">
-            Позиций: {inventoryItems.length}
-          </span>
-        )}
-      >
-        <div className="waiting-note">
-          <p>Одинаковый стартовый склад для всех команд.</p>
-        </div>
-
-        <div className="setup-toolbar">
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => {
-              void onRandomizeInventory(session.sessionCode);
-            }}
-            disabled={!isLobby || inventorySaving || loading}
-          >
-            {inventorySaving ? 'Обновление...' : 'Сформировать случайно'}
-          </button>
-
-          <button
-            type="button"
-            className="primary-button"
-            onClick={() => {
-              void handleSaveInventory();
-            }}
-            disabled={!isLobby || inventorySaving || loading || !isInventoryDraftValid}
-          >
-            {inventorySaving ? 'Сохранение...' : 'Сохранить склад'}
-          </button>
-        </div>
-
-        {!isInventoryDraftValid ? (
-          <p className="form-error">Количество на складе должно быть целым числом от 0 и выше.</p>
-        ) : null}
-
-        <div className="team-inventory-grid">
-          {inventoryItems.map((item) => (
-            <article key={item.itemName} className="inventory-item-card">
-              <label className="field compact-field">
-                <span>{item.itemName}</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={inventoryDrafts[item.itemName] ?? '0'}
-                  onChange={(event) => updateInventoryDraft(item.itemName, event.target.value)}
-                  disabled={!isLobby || inventorySaving}
-                />
-              </label>
-            </article>
-          ))}
-        </div>
-      </CollapsibleSection>
+              </article>
+            ))}
+          </div>
+        </CollapsibleSection>
+      ) : null}
 
     </div>
   );
