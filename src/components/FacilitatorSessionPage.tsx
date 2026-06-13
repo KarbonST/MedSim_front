@@ -18,6 +18,8 @@ import FacilitatorLiveDashboard from './FacilitatorLiveDashboard';
 import FacilitatorPostGameAnalytics from './FacilitatorPostGameAnalytics';
 import SessionSetupPanel from './SessionSetupPanel';
 import CollapsibleSection from './CollapsibleSection';
+import MenuToggleButton from './MenuToggleButton';
+import WorkspaceDrawer from './WorkspaceDrawer';
 
 interface FacilitatorSessionPageProps {
   login: string;
@@ -530,6 +532,7 @@ function FacilitatorSessionPage({
   onBack,
 }: FacilitatorSessionPageProps) {
   const [activeView, setActiveView] = useState<FacilitatorView>('sessions');
+  const [menuOpen, setMenuOpen] = useState(false);
   const [creationName, setCreationName] = useState('');
   const [creationTeamCount, setCreationTeamCount] = useState('2');
   const [creationBudget, setCreationBudget] = useState('15.00');
@@ -596,6 +599,7 @@ function FacilitatorSessionPage({
 
   const isLobby = session?.sessionStatus === 'LOBBY';
   const availableSessionNav = facilitatorSessionNav.filter((item) => isViewAvailable(item.id, session));
+  const activeNavItem = [...facilitatorWorkspaceNav, ...availableSessionNav].find((item) => item.id === activeView);
   const pageTitle = (() => {
     switch (activeView) {
       case 'create-session':
@@ -938,6 +942,12 @@ function FacilitatorSessionPage({
         compact
         eyebrow="Панель ведущего"
         title={pageTitle}
+        actions={(
+          <MenuToggleButton
+            expanded={menuOpen}
+            onClick={() => setMenuOpen((current) => !current)}
+          />
+        )}
       />
 
       <div className="room-hero">
@@ -950,57 +960,50 @@ function FacilitatorSessionPage({
 
       {error ? <p className="form-error">{error}</p> : null}
 
-      <div className="facilitator-workspace">
-        <aside className="facilitator-sidebar">
-          <section className="facilitator-sidebar-panel">
-            <p className="section-kicker">Разделы</p>
-            <div className="facilitator-sidebar-nav">
-              {facilitatorWorkspaceNav.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={activeView === item.id ? 'facilitator-nav-button active' : 'facilitator-nav-button'}
-                  onClick={() => setActiveView(item.id)}
-                >
-                  <strong>{item.label}</strong>
-                  <span>{item.description}</span>
-                </button>
-              ))}
-            </div>
-          </section>
+      <div className="workspace-page-indicator">
+        <div>
+          <span className="section-kicker">Открыт раздел</span>
+          <strong>{activeNavItem?.label ?? 'Рабочая область'}</strong>
+        </div>
+        {session ? (
+          <span className="status-pill subtle-status-pill">
+            {session.sessionCode} · {getSessionStatusLabel(session.sessionStatus)}
+          </span>
+        ) : null}
+      </div>
 
-          {session ? (
-            <section className="facilitator-sidebar-panel facilitator-sidebar-panel--session">
-              <p className="section-kicker">Текущая сессия</p>
-              <strong className="facilitator-sidebar-session-name">{session.sessionName}</strong>
-              <span className="facilitator-sidebar-session-meta">
-                {session.sessionCode} · {getSessionStatusLabel(session.sessionStatus)}
-              </span>
-              <div className="facilitator-sidebar-nav">
-                {availableSessionNav.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={activeView === item.id ? 'facilitator-nav-button active' : 'facilitator-nav-button'}
-                    onClick={() => setActiveView(item.id)}
-                  >
-                    <strong>{item.label}</strong>
-                    <span>{item.description}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          ) : null}
+      <div className="facilitator-content">
+        {renderActivePanel()}
+      </div>
 
-          <button type="button" className="secondary-button back-button facilitator-sidebar-back" onClick={onBack}>
+      <WorkspaceDrawer
+        open={menuOpen}
+        title="Панель ведущего"
+        subtitle={session ? `${session.sessionName} · ${session.sessionCode}` : 'Выбор и настройка игровых сессий'}
+        sections={[
+          {
+            title: 'Общие разделы',
+            items: facilitatorWorkspaceNav.map((item) => ({
+              ...item,
+              active: activeView === item.id,
+            })),
+          },
+          {
+            title: 'Текущая сессия',
+            items: availableSessionNav.map((item) => ({
+              ...item,
+              active: activeView === item.id,
+            })),
+          },
+        ]}
+        footer={(
+          <button type="button" className="secondary-button back-button" onClick={onBack}>
             Вернуться ко входу
           </button>
-        </aside>
-
-        <div className="facilitator-content">
-          {renderActivePanel()}
-        </div>
-      </div>
+        )}
+        onSelect={(viewId) => setActiveView(viewId as FacilitatorView)}
+        onClose={() => setMenuOpen(false)}
+      />
     </section>
   );
 }

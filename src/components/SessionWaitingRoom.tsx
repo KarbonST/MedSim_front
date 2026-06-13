@@ -1,6 +1,11 @@
+import { useMemo, useState } from 'react';
 import type { PlayerSession, PlayerTeamWorkspace } from '../types/app';
 import BrandHeader from './BrandHeader';
 import { getSessionStatusLabel } from '../constants/sessionStatuses';
+import MenuToggleButton from './MenuToggleButton';
+import WorkspaceDrawer from './WorkspaceDrawer';
+
+type WaitingRoomView = 'session' | 'participant' | 'status';
 
 interface SessionWaitingRoomProps {
   session: PlayerSession;
@@ -19,6 +24,84 @@ function SessionWaitingRoom({
 }: SessionWaitingRoomProps) {
   const teamName = workspace?.teamName ?? 'Команда назначается ведущим';
   const stagesCount = workspace?.stages.length ?? 0;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeView, setActiveView] = useState<WaitingRoomView>('session');
+  const waitingRoomNav = useMemo(() => ([
+    {
+      id: 'session' as const,
+      label: 'Сессия',
+      description: 'Название, код и этапы игры',
+    },
+    {
+      id: 'participant' as const,
+      label: 'Участник',
+      description: 'Роль, должность и команда',
+    },
+    {
+      id: 'status' as const,
+      label: 'Статус',
+      description: 'Подключение и ожидание запуска',
+    },
+  ]), []);
+  const activeNavItem = waitingRoomNav.find((item) => item.id === activeView);
+
+  const renderActivePanel = () => {
+    switch (activeView) {
+      case 'session':
+        return (
+          <div className="room-grid">
+            <article className="info-card">
+              <span>Название сессии</span>
+              <strong>{session.sessionName}</strong>
+            </article>
+            <article className="info-card">
+              <span>Код сессии</span>
+              <strong>{session.sessionCode}</strong>
+            </article>
+            <article className="info-card">
+              <span>Этапы игры</span>
+              <strong>{stagesCount ? `${stagesCount} этапа` : 'Настраиваются ведущим'}</strong>
+            </article>
+            <article className="info-card">
+              <span>Статус</span>
+              <strong>{getSessionStatusLabel(workspace?.sessionStatus ?? session.sessionStatus)}</strong>
+            </article>
+          </div>
+        );
+      case 'participant':
+        return (
+          <div className="room-grid">
+            <article className="info-card">
+              <span>Участник</span>
+              <strong>{session.displayName}</strong>
+            </article>
+            <article className="info-card">
+              <span>Реальная должность</span>
+              <strong>{session.hospitalPosition}</strong>
+            </article>
+            <article className="info-card">
+              <span>Игровая роль</span>
+              <strong>{workspace?.gameRole ?? session.gameRole ?? 'Назначается ведущим'}</strong>
+            </article>
+            <article className="info-card">
+              <span>Команда</span>
+              <strong>{teamName}</strong>
+            </article>
+          </div>
+        );
+      case 'status':
+        return (
+          <div className="waiting-note">
+            <p>
+              Вы уже в стартовой комнате. После запуска сессии экран автоматически переключится на рабочее пространство
+              вашей команды.
+            </p>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <section className="session-room">
@@ -26,6 +109,12 @@ function SessionWaitingRoom({
         compact
         eyebrow="Стартовая комната сессии"
         title="Подключение выполнено"
+        actions={(
+          <MenuToggleButton
+            expanded={menuOpen}
+            onClick={() => setMenuOpen((current) => !current)}
+          />
+        )}
       />
 
       <div className="room-hero">
@@ -36,45 +125,39 @@ function SessionWaitingRoom({
         <span className="status-pill">{getSessionStatusLabel(workspace?.sessionStatus ?? session.sessionStatus)}</span>
       </div>
 
-      <div className="room-grid">
-        <article className="info-card">
-          <span>Код сессии</span>
-          <strong>{session.sessionCode}</strong>
-        </article>
-        <article className="info-card">
-          <span>Участник</span>
-          <strong>{session.displayName}</strong>
-        </article>
-        <article className="info-card">
-          <span>Реальная должность</span>
-          <strong>{session.hospitalPosition}</strong>
-        </article>
-        <article className="info-card">
-          <span>Игровая роль</span>
-          <strong>{workspace?.gameRole ?? session.gameRole ?? 'Назначается ведущим'}</strong>
-        </article>
-        <article className="info-card">
-          <span>Команда</span>
-          <strong>{teamName}</strong>
-        </article>
-        <article className="info-card">
-          <span>Этапы игры</span>
-          <strong>{stagesCount ? `${stagesCount} этапа` : 'Настраиваются ведущим'}</strong>
-        </article>
+      <div className="workspace-page-indicator">
+        <div>
+          <span className="section-kicker">Открыт раздел</span>
+          <strong>{activeNavItem?.label ?? 'Стартовая комната'}</strong>
+        </div>
+        {workspaceLoading ? <span className="status-pill subtle-status-pill">Обновление...</span> : null}
       </div>
 
-      <div className="waiting-note">
-        <p>
-          Вы уже в стартовой комнате. После запуска сессии экран автоматически переключится на рабочее пространство
-          вашей команды.
-        </p>
-        {workspaceLoading ? <p className="waiting-note-inline">Обновляем состояние игровой комнаты...</p> : null}
-        {workspaceError ? <p className="form-error waiting-note-inline">{workspaceError}</p> : null}
-      </div>
+      {workspaceError ? <p className="form-error workspace-inline-error">{workspaceError}</p> : null}
 
-      <button type="button" className="secondary-button" onClick={onReset}>
-        Вернуться на старт
-      </button>
+      {renderActivePanel()}
+
+      <WorkspaceDrawer
+        open={menuOpen}
+        title="Меню участника"
+        subtitle={`${session.displayName} · ${session.sessionCode}`}
+        sections={[
+          {
+            title: 'Стартовая комната',
+            items: waitingRoomNav.map((item) => ({
+              ...item,
+              active: activeView === item.id,
+            })),
+          },
+        ]}
+        footer={(
+          <button type="button" className="secondary-button" onClick={onReset}>
+            Вернуться на старт
+          </button>
+        )}
+        onSelect={(viewId) => setActiveView(viewId as WaitingRoomView)}
+        onClose={() => setMenuOpen(false)}
+      />
     </section>
   );
 }
