@@ -30,6 +30,7 @@ export interface AvailablePlayerSession {
   sessionCode: string;
   sessionName: string;
   participantCount: number;
+  sessionStatus: string;
 }
 
 export interface PlayerSessionJoinRequest {

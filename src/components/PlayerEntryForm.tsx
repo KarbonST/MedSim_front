@@ -1,5 +1,6 @@
 import type { ChangeEvent, FormEvent } from 'react';
 import { playerRoles } from '../constants/playerRoles';
+import { getSessionStatusLabel } from '../constants/sessionStatuses';
 import type { AvailablePlayerSession, PlayerFormState } from '../types/app';
 
 interface PlayerEntryFormProps {
@@ -39,8 +40,7 @@ function PlayerEntryForm({
         <p className="section-kicker">Регистрация участника</p>
         <h2>Подключение к сессии</h2>
         <p>
-          Укажите имя, реальную должность и выберите комнату из списка или введите код сессии вручную,
-          если нужно вернуться в уже начатую игру.
+          Укажите имя, реальную должность и выберите сессию из списка.
         </p>
       </div>
 
@@ -48,7 +48,7 @@ function PlayerEntryForm({
         <div className="participants-panel-header">
           <div>
             <p className="section-kicker">Доступные сессии</p>
-            <h3>Выберите комнату или возьмите её код</h3>
+            <h3>Выберите игровую сессию</h3>
           </div>
 
           <button type="button" className="secondary-button" onClick={onRefreshSessions}>
@@ -69,14 +69,20 @@ function PlayerEntryForm({
                   onClick={() => onChange('sessionCode', session.sessionCode)}
                 >
                   <div className="session-card-header">
-                    <div>
+                    <div className="session-card-title">
                       <strong>{session.sessionName}</strong>
                       <span>{session.sessionCode}</span>
                     </div>
+                    <span className="status-pill session-status-pill">
+                      {getSessionStatusLabel(session.sessionStatus)}
+                    </span>
                   </div>
 
                   <div className="session-card-metrics">
                     <span>Игроков внутри: {session.participantCount}</span>
+                    {session.sessionStatus !== 'LOBBY' ? (
+                      <span>После старта доступен только повторный вход</span>
+                    ) : null}
                   </div>
                 </button>
               );
@@ -84,7 +90,7 @@ function PlayerEntryForm({
           </div>
         ) : (
           <div className="waiting-note">
-            <p>Сейчас нет доступных сессий. Дождитесь, пока ведущий создаст игровую комнату.</p>
+            <p>Сейчас нет доступных сессий. Дождитесь, пока ведущий создаст новую комнату.</p>
           </div>
         )}
       </div>
@@ -113,35 +119,22 @@ function PlayerEntryForm({
         </select>
       </label>
 
-      <label className="field">
-        <span>Код сессии</span>
-        <input
-          type="text"
-          placeholder="Например, FBPR-03"
-          value={formState.sessionCode}
-          onChange={handleInputChange('sessionCode')}
-        />
-      </label>
-
       {selectedSession ? (
         <div className="waiting-note compact-note">
           <p>
-            Выбрана сессия <strong>{selectedSession.sessionName}</strong> с кодом{' '}
-            <strong>{selectedSession.sessionCode}</strong>.
+            Выбрана сессия <strong>{selectedSession.sessionName}</strong>.
           </p>
-        </div>
-      ) : formState.sessionCode.trim() ? (
-        <div className="waiting-note compact-note">
-          <p>
-            Введён код <strong>{formState.sessionCode.trim().toUpperCase()}</strong>. Если вы уже участвовали в этой
-            сессии, вход выполнится даже после её старта.
-          </p>
+          {selectedSession.sessionStatus !== 'LOBBY' ? (
+            <p className="waiting-note-inline">
+              Если игра уже началась, войти смогут только участники, которые уже подключались к этой сессии под теми же именем и должностью.
+            </p>
+          ) : null}
         </div>
       ) : null}
 
       {error ? <p className="form-error">{error}</p> : null}
 
-      <button className="primary-button" type="submit" disabled={loading || !formState.sessionCode}>
+      <button className="primary-button" type="submit" disabled={loading || !formState.sessionCode.trim()}>
         {loading ? 'Подключение...' : 'Подключиться к сессии'}
       </button>
     </form>
