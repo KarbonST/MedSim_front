@@ -181,8 +181,8 @@ const facilitatorSessionNav: FacilitatorNavItem[] = [
   },
   {
     id: 'live',
-    label: 'Мониторинг',
-    description: 'Ход игры в реальном времени',
+    label: 'Дашборд',
+    description: 'Команды в реальном времени',
   },
   {
     id: 'analytics',
@@ -609,7 +609,7 @@ function FacilitatorSessionPage({
       case 'analytics':
         return 'Аналитика завершенной игры';
       case 'live':
-        return 'Мониторинг запущенной игры';
+        return 'Командный дашборд';
       case 'summary':
       case 'economy':
       case 'teams':
@@ -621,7 +621,7 @@ function FacilitatorSessionPage({
             ? 'Аналитика завершенной игры'
             : isLobby
               ? 'Контроль стартовой комнаты'
-              : 'Мониторинг запущенной игры')
+              : 'Командный дашборд')
           : 'Управление игровыми сессиями';
       default:
         return 'Управление игровыми сессиями';

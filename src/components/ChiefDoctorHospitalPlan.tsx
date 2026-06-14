@@ -1,11 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getHospitalRoomState, hospitalPlanRoomLayouts } from '../constants/hospitalPlan';
 import type { TeamProblemEconomyItem, TeamProblemStatus, TeamRoomEconomyItem } from '../types/app';
 
 interface ChiefDoctorHospitalPlanProps {
   rooms: TeamRoomEconomyItem[];
   emptyText?: string;
+  orientation?: 'vertical' | 'horizontal';
+  detailMode?: 'sidebar' | 'none';
 }
+
+const portraitPlanWidth = 300;
+const portraitPlanHeight = 720;
 
 const problemStatusLabels: Record<TeamProblemStatus, string> = {
   ACTIVE: 'Активна',
@@ -20,14 +25,54 @@ const problemSeverityLabels: Record<TeamProblemEconomyItem['severity'], string> 
   CRITICAL: 'Критическая',
 };
 
-function ChiefDoctorHospitalPlan({ rooms, emptyText = 'Экономика команды пока не подготовлена. Обновите командный экран или попросите ведущего пересоздать сессию.' }: ChiefDoctorHospitalPlanProps) {
+function rotateLayoutClockwise(layout: (typeof hospitalPlanRoomLayouts)[number]) {
+  return {
+    ...layout,
+    x: layout.y,
+    y: portraitPlanWidth - layout.x - layout.width,
+    width: layout.height,
+    height: layout.width,
+    labelVariant: 'horizontal' as const,
+  };
+}
+
+function ChiefDoctorHospitalPlan({
+  rooms,
+  emptyText = 'Экономика команды пока не подготовлена. Обновите командный экран или попросите ведущего пересоздать сессию.',
+  orientation = 'vertical',
+  detailMode = 'sidebar',
+}: ChiefDoctorHospitalPlanProps) {
   const [selectedRoomStateId, setSelectedRoomStateId] = useState<number | null>(rooms[0]?.roomStateId ?? null);
+  const supportsSelection = detailMode !== 'none';
 
   const roomsByCode = useMemo(() => new Map(rooms.map((room) => [room.roomCode, room])), [rooms]);
+  const planLayouts = useMemo(
+    () => (orientation === 'horizontal' ? hospitalPlanRoomLayouts.map(rotateLayoutClockwise) : hospitalPlanRoomLayouts),
+    [orientation],
+  );
+  const frameRect = orientation === 'horizontal'
+    ? { x: 8, y: 12, width: 704, height: 276 }
+    : { x: 12, y: 8, width: 276, height: 704 };
+  const planViewBox = orientation === 'horizontal' ? '0 0 720 300' : '0 0 300 720';
+
+  useEffect(() => {
+    if (!supportsSelection || !rooms.length) {
+      setSelectedRoomStateId(null);
+      return;
+    }
+
+    setSelectedRoomStateId((current) => (
+      current != null && rooms.some((room) => room.roomStateId === current)
+        ? current
+        : rooms[0]?.roomStateId ?? null
+    ));
+  }, [supportsSelection, rooms]);
 
   const selectedRoom = useMemo(
-    () => rooms.find((room) => room.roomStateId === selectedRoomStateId) ?? rooms[0] ?? null,
-    [rooms, selectedRoomStateId],
+    () => (supportsSelection
+      ? rooms.find((room) => room.roomStateId === selectedRoomStateId) ?? rooms[0] ?? null
+      : null),
+    [rooms, selectedRoomStateId, supportsSelection],
   );
   const escalatedProblems = selectedRoom?.problems.filter((problem) => problem.escalated) ?? [];
 
@@ -40,43 +85,44 @@ function ChiefDoctorHospitalPlan({ rooms, emptyText = 'Экономика ком
   }
 
   return (
-    <div className="hospital-plan-layout">
-      <div className="hospital-plan-shell">
+    <div className={`hospital-plan-layout hospital-plan-layout--${orientation}${detailMode === 'none' ? ' hospital-plan-layout--map-only' : ''}`}>
+      <div className={`hospital-plan-shell${orientation === 'horizontal' ? ' hospital-plan-shell--horizontal' : ''}`}>
         <svg
-          viewBox="0 0 300 720"
-          className="hospital-plan-svg"
+          viewBox={planViewBox}
+          className={orientation === 'horizontal' ? 'hospital-plan-svg hospital-plan-svg--horizontal' : 'hospital-plan-svg'}
           role="img"
           aria-label="Упрощённый план поликлиники"
         >
-          <rect x="12" y="8" width="276" height="704" rx="18" className="plan-frame" />
+          <rect x={frameRect.x} y={frameRect.y} width={frameRect.width} height={frameRect.height} rx="18" className="plan-frame" />
 
-          {hospitalPlanRoomLayouts.map((layout) => {
+          {planLayouts.map((layout) => {
             const room = roomsByCode.get(layout.roomCode);
             const state = getHospitalRoomState(room?.activeProblemCount ?? 0, room?.worstProblemSeverity);
-            const isSelected = room?.roomStateId === selectedRoom?.roomStateId;
+            const isSelected = supportsSelection && room?.roomStateId === selectedRoom?.roomStateId;
             const labelLines = layout.labelLines ?? [room?.roomName ?? layout.fallbackName];
             const labelX = layout.x + layout.width / 2;
             const labelY = layout.y + layout.height / 2;
             const problemBadgeX = layout.x + layout.width - 18;
             const problemBadgeY = layout.y + 18;
+            const interactive = Boolean(room) && supportsSelection;
 
             return (
               <g
                 key={layout.id}
-                className={`plan-room-group plan-room-group--${state}${isSelected ? ' is-selected' : ''}`}
+                className={`plan-room-group plan-room-group--${state}${interactive ? ' plan-room-group--interactive' : ''}${isSelected ? ' is-selected' : ''}`}
                 onClick={() => {
-                  if (room) {
+                  if (room && interactive) {
                     setSelectedRoomStateId(room.roomStateId);
                   }
                 }}
                 onKeyDown={(event) => {
-                  if (room && (event.key === 'Enter' || event.key === ' ')) {
+                  if (room && interactive && (event.key === 'Enter' || event.key === ' ')) {
                     event.preventDefault();
                     setSelectedRoomStateId(room.roomStateId);
                   }
                 }}
-                role="button"
-                tabIndex={room ? 0 : -1}
+                role={interactive ? 'button' : undefined}
+                tabIndex={interactive ? 0 : -1}
                 aria-label={`${room?.roomName ?? layout.fallbackName}, активных проблем: ${room?.activeProblemCount ?? 0}`}
               >
                 <rect
@@ -88,7 +134,7 @@ function ChiefDoctorHospitalPlan({ rooms, emptyText = 'Экономика ком
                   className="plan-room"
                 />
 
-                {layout.labelVariant === 'vertical' ? (
+                {orientation === 'vertical' && layout.labelVariant === 'vertical' ? (
                   <text x={labelX} y={labelY} textAnchor="middle" className="plan-room-label plan-room-label--vertical">
                     {labelLines.map((line, index) => (
                       <tspan key={`${layout.id}-${line}`} x={labelX} dy={index === 0 ? 0 : 18}>
@@ -120,7 +166,7 @@ function ChiefDoctorHospitalPlan({ rooms, emptyText = 'Экономика ком
         </svg>
       </div>
 
-      {selectedRoom ? (
+      {detailMode === 'sidebar' && selectedRoom ? (
         <div className="hospital-plan-sidebar">
           <article className={`hospital-room-summary hospital-room-summary--${getHospitalRoomState(selectedRoom.activeProblemCount, selectedRoom.worstProblemSeverity)}`}>
             <p className="section-kicker">Выбранный кабинет</p>

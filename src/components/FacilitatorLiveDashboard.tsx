@@ -4,8 +4,17 @@ import type {
   GameSessionKanbanResponse,
   GameSessionParticipantsResponse,
   SessionParticipantSummary,
+  TeamProblemEconomyItem,
+  TeamProblemStatus,
+  TeamRoomEconomyItem,
 } from '../types/app';
 import { getSessionStatusLabel } from '../constants/sessionStatuses';
+import {
+  formatRuntimeDuration,
+  getInteractionModeLabel,
+  getRuntimeRemainingSeconds,
+  getTimerStatusLabel,
+} from '../lib/sessionRuntime';
 import CollapsibleSection from './CollapsibleSection';
 import TeamChatFeed from './TeamChatFeed';
 import { useFacilitatorTeamChats } from '../hooks/useFacilitatorTeamChats';
@@ -20,7 +29,60 @@ interface FacilitatorLiveDashboardProps {
   kanbanOverview: GameSessionKanbanResponse | null;
 }
 
+interface DashboardProblemItem extends TeamProblemEconomyItem {
+  roomName: string;
+  roomCode: string;
+  roomStateId: number;
+}
+
 const leadershipRoles = new Set(['Главный врач', 'Главная медсестра', 'Главный инженер']);
+
+const problemStatusLabels: Record<TeamProblemStatus, string> = {
+  ACTIVE: 'Активна',
+  IN_PROGRESS: 'В работе',
+  RESOLVED: 'Решена',
+  IGNORED: 'Игнорируется',
+};
+
+const problemSeverityLabels: Record<TeamProblemEconomyItem['severity'], string> = {
+  MINOR: 'Незначительная',
+  SERIOUS: 'Серьёзная',
+  CRITICAL: 'Критическая',
+};
+
+const severityOrder: Record<TeamProblemEconomyItem['severity'], number> = {
+  CRITICAL: 0,
+  SERIOUS: 1,
+  MINOR: 2,
+};
+
+function buildDashboardProblems(rooms: TeamRoomEconomyItem[]): DashboardProblemItem[] {
+  return rooms
+    .flatMap((room) => room.problems.map((problem) => ({
+      ...problem,
+      roomName: room.roomName,
+      roomCode: room.roomCode,
+      roomStateId: room.roomStateId,
+    })))
+    .sort((left, right) => {
+      const severityDiff = severityOrder[left.severity] - severityOrder[right.severity];
+      if (severityDiff !== 0) {
+        return severityDiff;
+      }
+
+      const stageDiff = left.stageNumber - right.stageNumber;
+      if (stageDiff !== 0) {
+        return stageDiff;
+      }
+
+      const roomDiff = left.roomName.localeCompare(right.roomName, 'ru');
+      if (roomDiff !== 0) {
+        return roomDiff;
+      }
+
+      return left.problemNumber - right.problemNumber;
+    });
+}
 
 function FacilitatorLiveDashboard({
   session,
@@ -30,6 +92,8 @@ function FacilitatorLiveDashboard({
   kanbanOverview,
 }: FacilitatorLiveDashboardProps) {
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(session.teams[0]?.teamId ?? null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [runtimeSyncedAtMs, setRuntimeSyncedAtMs] = useState<number | null>(() => Date.now());
 
   useEffect(() => {
     if (!session.teams.length) {
@@ -43,6 +107,29 @@ function FacilitatorLiveDashboard({
       setSelectedTeamId(session.teams[0]?.teamId ?? null);
     }
   }, [selectedTeamId, session.teams]);
+
+  useEffect(() => {
+    setRuntimeSyncedAtMs(Date.now());
+  }, [
+    session.sessionRuntime.activeStageNumber,
+    session.sessionRuntime.timerStatus,
+    session.sessionRuntime.remainingSeconds,
+  ]);
+
+  useEffect(() => {
+    if (session.sessionRuntime.timerStatus !== 'RUNNING') {
+      return;
+    }
+
+    setNowMs(Date.now());
+    const timerId = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [session.sessionRuntime.timerStatus, session.sessionRuntime.timerEndsAt]);
 
   const teamParticipantsMap = useMemo(() => {
     return session.teams.reduce<Record<number, SessionParticipantSummary[]>>((accumulator, team) => {
@@ -58,36 +145,47 @@ function FacilitatorLiveDashboard({
   });
 
   const selectedTeam = session.teams.find((team) => team.teamId === selectedTeamId) ?? session.teams[0] ?? null;
-  const selectedTeamParticipants = selectedTeam ? (teamParticipantsMap[selectedTeam.teamId] ?? []) : [];
   const selectedTeamEconomy = selectedTeam
     ? economyOverview?.teams.find((team) => team.teamId === selectedTeam.teamId) ?? null
     : null;
   const selectedTeamKanbanBoard = selectedTeam
     ? kanbanOverview?.teams.find((team) => team.teamId === selectedTeam.teamId)?.teamKanbanBoard ?? null
     : null;
+  const selectedTeamProblems = useMemo(
+    () => buildDashboardProblems(selectedTeamEconomy?.rooms ?? []),
+    [selectedTeamEconomy],
+  );
+
+  const activeStageNumber = session.sessionRuntime.activeStageNumber;
+  const activeInteractionMode = session.sessionRuntime.activeStageInteractionMode;
+  const remainingSeconds = getRuntimeRemainingSeconds(
+    session.sessionRuntime,
+    nowMs,
+    runtimeSyncedAtMs,
+  );
+  const kanbanVisibleOnStage = activeInteractionMode === 'CHAT_AND_KANBAN';
 
   return (
     <div className="session-setup-stack facilitator-live-stack">
       <CollapsibleSection
-        kicker="Мониторинг игры"
-        title="Команды после старта"
+        kicker="Командный экран"
+        title="Дашборд команд"
         className="facilitator-live-panel"
         defaultExpanded
         badge={(
           <span className="status-pill subtle-status-pill">
-            {loading ? 'Обновление...' : `Активных команд: ${session.teams.length}`}
+            {loading ? 'Обновление...' : `Команд: ${session.teams.length}`}
           </span>
         )}
       >
-        <div className="waiting-note">
-          <p>Общий обзор по всем командам.</p>
+        <div className="waiting-note compact-note">
+          <p>Выберите команду и откройте этот экран на отдельном мониторе или телевизоре для живого обзора.</p>
         </div>
 
         <div className="team-cards facilitator-dashboard-teams">
           {session.teams.map((team) => {
             const teamParticipants = teamParticipantsMap[team.teamId] ?? [];
             const assignedRolesCount = teamParticipants.filter((participant) => participant.gameRole).length;
-            const leadershipCount = teamParticipants.filter((participant) => leadershipRoles.has(participant.gameRole ?? '')).length;
             const isSelected = selectedTeam?.teamId === team.teamId;
 
             return (
@@ -105,29 +203,157 @@ function FacilitatorLiveDashboard({
                 </div>
 
                 <div className="session-card-metrics facilitator-team-metrics">
-                  <span>Роли выданы: {assignedRolesCount}/{teamParticipants.length}</span>
-                  <span>Руководящих ролей: {leadershipCount}/3</span>
+                  <span>Роли: {assignedRolesCount}/{teamParticipants.length}</span>
+                  <span>Лидеры: {teamParticipants.filter((participant) => leadershipRoles.has(participant.gameRole ?? '')).length}/3</span>
                   <span>Без роли: {teamParticipants.filter((participant) => !participant.gameRole).length}</span>
                 </div>
               </article>
             );
           })}
         </div>
+
+        {selectedTeam ? (
+          <div className="facilitator-team-dashboard">
+            <section className="facilitator-team-dashboard-panel facilitator-team-dashboard-panel--hero">
+              <div className="facilitator-dashboard-runtime-strip">
+                <article className="session-control-timer-card facilitator-dashboard-timer-card">
+                  <span>До конца этапа</span>
+                  <strong className="stage-timer-display">{formatRuntimeDuration(remainingSeconds)}</strong>
+                  <span className="status-pill subtle-status-pill runtime-status-pill">
+                    {getTimerStatusLabel(session.sessionRuntime.timerStatus)}
+                  </span>
+                </article>
+
+                <div className="facilitator-dashboard-team-heading">
+                  <p className="section-kicker">Активная команда</p>
+                  <h3>{selectedTeam.teamName}</h3>
+                  <p className="participant-role-subtitle">
+                    {activeStageNumber
+                      ? `Этап ${activeStageNumber} · ${getInteractionModeLabel(activeInteractionMode)}`
+                      : 'Этап пока не выбран'}
+                  </p>
+                  <div className="facilitator-dashboard-summary-badges">
+                    <span className="status-pill subtle-status-pill">
+                      {getSessionStatusLabel(session.sessionStatus)}
+                    </span>
+                    <span className="status-pill subtle-status-pill">
+                      {kanbanVisibleOnStage ? 'Канбан активен' : 'Раунд без канбана'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="facilitator-team-dashboard-panel">
+              <div className="facilitator-team-dashboard-panel-header">
+                <div>
+                  <p className="section-kicker">Карта больницы</p>
+                  <h4>Кабинеты и количество проблем</h4>
+                </div>
+                <span className="status-pill subtle-status-pill">
+                  {selectedTeamEconomy ? `Команда ${selectedTeam.sortOrder}` : 'Загрузка...'}
+                </span>
+              </div>
+
+              <ChiefDoctorHospitalPlan
+                rooms={selectedTeamEconomy?.rooms ?? []}
+                orientation="horizontal"
+                detailMode="none"
+                emptyText="Данные карты команды пока не подготовлены."
+              />
+            </section>
+
+            {kanbanVisibleOnStage ? (
+              <section className="facilitator-team-dashboard-panel">
+                <div className="facilitator-team-dashboard-panel-header">
+                  <div>
+                    <p className="section-kicker">Канбан команды</p>
+                    <h4>Полная доска в режиме просмотра</h4>
+                  </div>
+                  <span className="status-pill subtle-status-pill">
+                    {selectedTeamKanbanBoard ? `Карточек: ${selectedTeamKanbanBoard.cards.length}` : 'Загрузка...'}
+                  </span>
+                </div>
+
+                <div className="waiting-note compact-note">
+                  <p>Эту часть удобно выводить на отдельный экран: все перемещения карточек обновляются автоматически.</p>
+                </div>
+
+                <TeamKanbanBoard board={selectedTeamKanbanBoard} readOnly />
+              </section>
+            ) : (
+              <section className="facilitator-team-dashboard-panel">
+                <div className="facilitator-team-dashboard-panel-header">
+                  <div>
+                    <p className="section-kicker">Проблемы команды</p>
+                    <h4>Список активных проблем текущего раунда</h4>
+                  </div>
+                  <span className="status-pill subtle-status-pill">
+                    {selectedTeamProblems.length}
+                  </span>
+                </div>
+
+                <div className="waiting-note compact-note">
+                  <p>На текущем этапе команда работает без канбан-доски, поэтому здесь показан полный список актуальных проблем.</p>
+                </div>
+
+                {selectedTeamProblems.length ? (
+                  <div className="facilitator-stage-problem-list">
+                    {selectedTeamProblems.map((problem) => (
+                      <article
+                        key={problem.problemStateId}
+                        className={`facilitator-stage-problem-card facilitator-stage-problem-card--${problem.severity.toLowerCase()}`}
+                      >
+                        <div className="facilitator-stage-problem-card-header">
+                          <div>
+                            <span className="section-kicker">{problem.roomName}</span>
+                            <strong>{problem.problemNumber}. {problem.title}</strong>
+                          </div>
+                          <span className="status-pill subtle-status-pill">{problemSeverityLabels[problem.severity]}</span>
+                        </div>
+
+                        <p>
+                          Этап {problem.stageNumber} · статус {problemStatusLabels[problem.status].toLowerCase()} ·
+                          {' '}штраф {Number(problem.ignorePenalty).toFixed(2)}
+                        </p>
+
+                        <div className="facilitator-stage-problem-card-meta">
+                          <span>Бюджет: {Number(problem.budgetCost).toFixed(2)}</span>
+                          <span>Время: {problem.timeCost}</span>
+                          {problem.requiredItemName && problem.requiredItemQuantity > 0 ? (
+                            <span>Нужно: {problem.requiredItemName}, {problem.requiredItemQuantity} шт.</span>
+                          ) : null}
+                          {problem.escalated && problem.escalationTitle ? (
+                            <span>{problem.escalationTitle}</span>
+                          ) : null}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="waiting-note compact-note">
+                    <p>У выбранной команды сейчас нет активных проблем для отображения.</p>
+                  </div>
+                )}
+              </section>
+            )}
+          </div>
+        ) : null}
       </CollapsibleSection>
 
       <CollapsibleSection
         kicker="Чаты команд"
-        title="Переписка обеих команд"
+        title="Переписка команд"
         className="facilitator-live-panel"
         defaultExpanded={false}
         badge={(
           <span className="status-pill subtle-status-pill">
-            {chatState.loading ? 'Загрузка чатов...' : `Чатов команд: ${chatState.teamChats.length}`}
+            {chatState.loading ? 'Загрузка чатов...' : `Чатов: ${chatState.teamChats.length}`}
           </span>
         )}
       >
-        <div className="waiting-note">
-          <p>Чаты обеих команд в одном месте.</p>
+        <div className="waiting-note compact-note">
+          <p>Дополнительный экран для контроля переписки. Можно держать свернутым, если нужен только дашборд.</p>
         </div>
 
         <div className="facilitator-team-chat-grid">
@@ -146,89 +372,6 @@ function FacilitatorLiveDashboard({
 
         {chatState.error ? <p className="form-error">{chatState.error}</p> : null}
       </CollapsibleSection>
-
-      {selectedTeam ? (
-        <CollapsibleSection
-          kicker="Детали команды"
-          title={selectedTeam.teamName}
-          className="facilitator-live-panel"
-          defaultExpanded={false}
-          badge={<span className="status-pill subtle-status-pill">Участников: {selectedTeamParticipants.length}</span>}
-        >
-          <div className="room-grid facilitator-monitoring-grid">
-            <article className="info-card">
-              <span>Код сессии</span>
-              <strong>{session.sessionCode}</strong>
-            </article>
-            <article className="info-card">
-              <span>Статус сессии</span>
-              <strong>{getSessionStatusLabel(session.sessionStatus)}</strong>
-            </article>
-            <article className="info-card">
-              <span>Этапов настроено</span>
-              <strong>{session.stages.length}</strong>
-            </article>
-            <article className="info-card">
-              <span>Команда</span>
-              <strong>{selectedTeam.teamName}</strong>
-            </article>
-          </div>
-
-          <CollapsibleSection
-            kicker="План команды"
-            title="Кабинеты и проблемы"
-            className="facilitator-live-nested-panel"
-            defaultExpanded
-            badge={<span className="status-pill subtle-status-pill">{selectedTeamEconomy ? 'Доступен' : 'Загрузка...'}</span>}
-          >
-            <div className="waiting-note compact-note chief-doctor-plan-note">
-              <p>Кабинеты, проблемы и статусы задач выбранной команды.</p>
-            </div>
-            <ChiefDoctorHospitalPlan
-              rooms={selectedTeamEconomy?.rooms ?? []}
-              emptyText="Данные плана выбранной команды загружаются или ещё не подготовлены."
-            />
-          </CollapsibleSection>
-
-          <CollapsibleSection
-            kicker="Канбан команды"
-            title="Доска задач"
-            className="facilitator-live-nested-panel"
-            defaultExpanded={false}
-            badge={<span className="status-pill subtle-status-pill">{selectedTeamKanbanBoard ? 'Просмотр' : 'Загрузка...'}</span>}
-          >
-            <div className="waiting-note compact-note">
-              <p>Доска команды в режиме просмотра.</p>
-            </div>
-            <TeamKanbanBoard board={selectedTeamKanbanBoard} readOnly />
-          </CollapsibleSection>
-
-          <div className="participants-list role-management-list workspace-members-list">
-            {selectedTeamParticipants.map((participant, index) => (
-              <article key={participant.participantId} className="participant-card team-member-card">
-                <div className="participant-card-header">
-                  <span className="participant-index">#{index + 1}</span>
-                  <div>
-                    <strong>{participant.displayName}</strong>
-                    <p className="participant-role-subtitle">{participant.gameRole ?? 'Игровая роль не назначена'}</p>
-                  </div>
-                </div>
-
-                <dl className="participant-details participant-management-details">
-                  <div>
-                    <dt>Реальная должность</dt>
-                    <dd>{participant.hospitalPosition}</dd>
-                  </div>
-                  <div>
-                    <dt>Команда</dt>
-                    <dd>{participant.teamName ?? 'Не указана'}</dd>
-                  </div>
-                </dl>
-              </article>
-            ))}
-          </div>
-        </CollapsibleSection>
-      ) : null}
     </div>
   );
 }
