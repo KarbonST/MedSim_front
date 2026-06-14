@@ -7,7 +7,7 @@ function MenuToggleButton({ expanded, onClick }: MenuToggleButtonProps) {
   return (
     <button
       type="button"
-      className="menu-toggle-button"
+      className={expanded ? 'menu-toggle-button menu-toggle-button--expanded' : 'menu-toggle-button'}
       aria-label={expanded ? 'Закрыть меню' : 'Открыть меню'}
       aria-expanded={expanded}
       aria-haspopup="dialog"
