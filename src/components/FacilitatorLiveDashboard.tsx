@@ -16,15 +16,12 @@ import {
   getTimerStatusLabel,
 } from '../lib/sessionRuntime';
 import CollapsibleSection from './CollapsibleSection';
-import TeamChatFeed from './TeamChatFeed';
-import { useFacilitatorTeamChats } from '../hooks/useFacilitatorTeamChats';
 import ChiefDoctorHospitalPlan from './ChiefDoctorHospitalPlan';
 import TeamKanbanBoard from './TeamKanbanBoard';
 
 interface FacilitatorLiveDashboardProps {
   session: GameSessionParticipantsResponse;
   loading: boolean;
-  authHeader: string;
   economyOverview: GameSessionEconomyResponse | null;
   kanbanOverview: GameSessionKanbanResponse | null;
 }
@@ -87,7 +84,6 @@ function buildDashboardProblems(rooms: TeamRoomEconomyItem[]): DashboardProblemI
 function FacilitatorLiveDashboard({
   session,
   loading,
-  authHeader,
   economyOverview,
   kanbanOverview,
 }: FacilitatorLiveDashboardProps) {
@@ -137,12 +133,6 @@ function FacilitatorLiveDashboard({
       return accumulator;
     }, {});
   }, [session.participants, session.teams]);
-
-  const { chatState } = useFacilitatorTeamChats({
-    sessionCode: session.sessionCode,
-    authHeader,
-    enabled: true,
-  });
 
   const selectedTeam = session.teams.find((team) => team.teamId === selectedTeamId) ?? session.teams[0] ?? null;
   const selectedTeamEconomy = selectedTeam
@@ -341,37 +331,6 @@ function FacilitatorLiveDashboard({
         ) : null}
       </CollapsibleSection>
 
-      <CollapsibleSection
-        kicker="Чаты команд"
-        title="Переписка команд"
-        className="facilitator-live-panel"
-        defaultExpanded={false}
-        badge={(
-          <span className="status-pill subtle-status-pill">
-            {chatState.loading ? 'Загрузка чатов...' : `Чатов: ${chatState.teamChats.length}`}
-          </span>
-        )}
-      >
-        <div className="waiting-note compact-note">
-          <p>Дополнительный экран для контроля переписки. Можно держать свернутым, если нужен только дашборд.</p>
-        </div>
-
-        <div className="facilitator-team-chat-grid">
-          {chatState.teamChats.map((teamChat) => (
-            <TeamChatFeed
-              key={teamChat.teamId}
-              title={teamChat.teamName}
-              subtitle={`Команда ${teamChat.sortOrder}`}
-              messages={teamChat.messages}
-              loading={chatState.loading}
-              connectionStatus={chatState.connectionStatus}
-              emptyText="В этой команде пока нет сообщений."
-            />
-          ))}
-        </div>
-
-        {chatState.error ? <p className="form-error">{chatState.error}</p> : null}
-      </CollapsibleSection>
     </div>
   );
 }

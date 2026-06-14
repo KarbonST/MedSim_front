@@ -15,6 +15,8 @@ import BrandHeader from './BrandHeader';
 import { getSessionStatusLabel } from '../constants/sessionStatuses';
 import { formatRuntimeDuration, getInteractionModeLabel, getRuntimeRemainingSeconds, getTimerStatusLabel } from '../lib/sessionRuntime';
 import FacilitatorLiveDashboard from './FacilitatorLiveDashboard';
+import FacilitatorTeamChatsPanel from './FacilitatorTeamChatsPanel';
+import FacilitatorTeamRosterPanel from './FacilitatorTeamRosterPanel';
 import FacilitatorPostGameAnalytics from './FacilitatorPostGameAnalytics';
 import SessionSetupPanel from './SessionSetupPanel';
 import CollapsibleSection from './CollapsibleSection';
@@ -127,6 +129,8 @@ type FacilitatorView =
   | 'inventory'
   | 'control'
   | 'live'
+  | 'roster'
+  | 'chat'
   | 'analytics';
 
 interface FacilitatorNavItem {
@@ -185,6 +189,16 @@ const facilitatorSessionNav: FacilitatorNavItem[] = [
     description: 'Команды в реальном времени',
   },
   {
+    id: 'roster',
+    label: 'Состав команд',
+    description: 'Участники и назначенные роли',
+  },
+  {
+    id: 'chat',
+    label: 'Чаты команд',
+    description: 'Переписка обеих команд',
+  },
+  {
     id: 'analytics',
     label: 'Аналитика',
     description: 'Итоги завершенной сессии',
@@ -223,6 +237,9 @@ function isViewAvailable(view: FacilitatorView, session: GameSessionParticipants
       return session !== null && session.sessionStatus === 'LOBBY';
     case 'live':
       return session !== null && session.sessionStatus !== 'LOBBY' && session.sessionStatus !== 'FINISHED';
+    case 'roster':
+    case 'chat':
+      return session !== null && session.sessionStatus !== 'LOBBY';
     case 'analytics':
       return session !== null && session.sessionStatus === 'FINISHED';
     default:
@@ -610,6 +627,10 @@ function FacilitatorSessionPage({
         return 'Аналитика завершенной игры';
       case 'live':
         return 'Командный дашборд';
+      case 'roster':
+        return 'Состав команд';
+      case 'chat':
+        return 'Чаты команд';
       case 'summary':
       case 'economy':
       case 'teams':
@@ -908,9 +929,27 @@ function FacilitatorSessionPage({
           <FacilitatorLiveDashboard
             session={session}
             loading={loading}
-            authHeader={authHeader}
             economyOverview={economyOverview}
             kanbanOverview={kanbanOverview}
+          />
+        ) : (
+          <div className="waiting-note facilitator-empty-state">
+            <p>Сначала выберите сессию.</p>
+          </div>
+        );
+      case 'roster':
+        return session ? (
+          <FacilitatorTeamRosterPanel session={session} />
+        ) : (
+          <div className="waiting-note facilitator-empty-state">
+            <p>Сначала выберите сессию.</p>
+          </div>
+        );
+      case 'chat':
+        return session ? (
+          <FacilitatorTeamChatsPanel
+            sessionCode={session.sessionCode}
+            authHeader={authHeader}
           />
         ) : (
           <div className="waiting-note facilitator-empty-state">
