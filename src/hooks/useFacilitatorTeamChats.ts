@@ -29,6 +29,22 @@ const initialState: FacilitatorTeamChatsState = {
   teamChats: [],
 };
 
+function getPermanentCloseError(event: CloseEvent): string | null {
+  if (event.code === 4401 || event.code === 4403) {
+    return event.reason || 'Доступ к чатам команд запрещён. Требуется повторный вход.';
+  }
+
+  if (event.code === 4404) {
+    return event.reason || 'Игровая сессия для чатов не найдена.';
+  }
+
+  if (event.code === 4409) {
+    return event.reason || 'Чаты пока недоступны в текущем состоянии игры.';
+  }
+
+  return null;
+}
+
 function appendMessageToThreads(
   current: FacilitatorTeamChatThread[],
   incoming: TeamChatMessage,
@@ -124,6 +140,7 @@ export function useFacilitatorTeamChats({
           socket.close();
           return;
         }
+        setChatError('');
         setConnectionStatus('open');
       };
 
@@ -147,12 +164,18 @@ export function useFacilitatorTeamChats({
         }
       };
 
-      socket.onclose = () => {
+      socket.onclose = (event) => {
         if (disposed) {
           return;
         }
 
         setConnectionStatus('closed');
+        const permanentCloseError = getPermanentCloseError(event);
+        if (permanentCloseError) {
+          setChatError(permanentCloseError);
+          return;
+        }
+
         reconnectTimerRef.current = window.setTimeout(() => {
           connect(true);
         }, 1500);

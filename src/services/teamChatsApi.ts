@@ -33,8 +33,15 @@ function createAuthorizedHeaders(authHeader: string, init?: HeadersInit): Header
 }
 
 function buildWebSocketUrl(params: Record<string, string>): string {
-  const url = new URL('/ws/team-chat', window.location.origin);
-  url.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const baseUrl = API_BASE_URL
+    ? new URL(API_BASE_URL, window.location.origin)
+    : new URL(window.location.origin);
+  const normalizedBasePath = baseUrl.pathname.replace(/\/api\/?$/, '').replace(/\/$/, '');
+  const url = new URL(baseUrl.toString());
+
+  url.protocol = baseUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+  url.pathname = `${normalizedBasePath}/ws/team-chat`;
+  url.search = '';
 
   Object.entries(params).forEach(([key, value]) => {
     url.searchParams.set(key, value);

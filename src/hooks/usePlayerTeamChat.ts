@@ -25,6 +25,22 @@ const initialState: PlayerTeamChatState = {
   messages: [],
 };
 
+function getPermanentCloseError(event: CloseEvent): string | null {
+  if (event.code === 4401 || event.code === 4403) {
+    return event.reason || 'Доступ к чату запрещён. Требуется повторный вход.';
+  }
+
+  if (event.code === 4404) {
+    return event.reason || 'Игровая сессия для чата не найдена.';
+  }
+
+  if (event.code === 4409) {
+    return event.reason || 'Чат пока недоступен в текущем состоянии игры.';
+  }
+
+  return null;
+}
+
 function mergeMessages(current: TeamChatMessage[], incoming: TeamChatMessage): TeamChatMessage[] {
   if (current.some((message) => message.id === incoming.id)) {
     return current;
@@ -92,6 +108,7 @@ export function usePlayerTeamChat({ sessionCode, participantId, enabled }: UsePl
           socket.close();
           return;
         }
+        setChatError('');
         setConnectionStatus('open');
       };
 
@@ -115,12 +132,18 @@ export function usePlayerTeamChat({ sessionCode, participantId, enabled }: UsePl
         }
       };
 
-      socket.onclose = () => {
+      socket.onclose = (event) => {
         if (disposed) {
           return;
         }
 
         setConnectionStatus('closed');
+        const permanentCloseError = getPermanentCloseError(event);
+        if (permanentCloseError) {
+          setChatError(permanentCloseError);
+          return;
+        }
+
         reconnectTimerRef.current = window.setTimeout(() => {
           connect(true);
         }, 1500);
