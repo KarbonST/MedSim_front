@@ -220,12 +220,12 @@ function TeamKanbanBoard({
     currentGameRole === chiefDoctorRole || isCurrentUserDepartmentLead(card.responsibleDepartment)
   );
 
-  const canHoldCard = (card: TeamKanbanCardItem): boolean => (
+  const canReturnCardToPool = (card: TeamKanbanCardItem): boolean => (
     canManageHold(card)
-    && ['REGISTERED', 'ASSIGNED', 'READY_FOR_WORK', 'REWORK'].includes(card.status)
+    && ['ASSIGNED', 'READY_FOR_WORK', 'REWORK'].includes(card.status)
   );
 
-  const renderHoldButton = (card: TeamKanbanCardItem, isUpdating: boolean) => (
+  const renderReturnToPoolButton = (card: TeamKanbanCardItem, isUpdating: boolean) => (
     <button
       type="button"
       className="secondary-button compact-button"
@@ -234,11 +234,11 @@ function TeamKanbanBoard({
           return;
         }
 
-        void onUpdateCardStatus(card.cardId, { status: 'HOLD' });
+        void onUpdateCardStatus(card.cardId, { status: 'REGISTERED' });
       }}
       disabled={isUpdating}
     >
-      {isUpdating ? 'Откладываем...' : 'Отложить на следующий этап'}
+      {isUpdating ? 'Возвращаем...' : 'Вернуть в общий пул'}
     </button>
   );
 
@@ -475,17 +475,16 @@ function TeamKanbanBoard({
           >
             {isUpdating ? 'Передаём...' : 'Передать руководителю'}
           </button>
-          {canHoldCard(card) ? renderHoldButton(card, isUpdating) : null}
         </div>
       );
     }
 
     if (card.status === 'ASSIGNED') {
       if (!card.responsibleDepartment || !isCurrentUserDepartmentLead(card.responsibleDepartment)) {
-        if (canHoldCard(card)) {
+        if (canReturnCardToPool(card)) {
           return (
             <div className="kanban-card-actions">
-              {renderHoldButton(card, isUpdating)}
+              {renderReturnToPoolButton(card, isUpdating)}
             </div>
           );
         }
@@ -536,16 +535,16 @@ function TeamKanbanBoard({
           >
             {isUpdating ? 'Назначаем...' : 'Назначить исполнителя'}
           </button>
-          {canHoldCard(card) ? renderHoldButton(card, isUpdating) : null}
+          {canReturnCardToPool(card) ? renderReturnToPoolButton(card, isUpdating) : null}
         </div>
       );
     }
 
     if (card.status === 'READY_FOR_WORK') {
-      if (canHoldCard(card) && card.assigneeParticipantId !== currentParticipantId) {
+      if (canReturnCardToPool(card) && card.assigneeParticipantId !== currentParticipantId) {
         return (
           <div className="kanban-card-actions">
-            {renderHoldButton(card, isUpdating)}
+            {renderReturnToPoolButton(card, isUpdating)}
           </div>
         );
       }
@@ -1164,7 +1163,7 @@ function getRolePanelText({
   if (currentGameRole === chiefDoctorRole) {
     return {
       title: 'Разбор задач',
-      description: `Приоритет, подразделение и hold. Карточек: ${visibleCount}.`,
+      description: `Приоритет, подразделение и возврат в пул. Карточек: ${visibleCount}.`,
     };
   }
 
@@ -1173,7 +1172,7 @@ function getRolePanelText({
       title: 'Назначение исполнителей',
       description: showingAllCards
         ? `Все карточки команды: ${totalCount}. Действия только по вашему подразделению.`
-        : 'Задачи подразделения: назначение, согласование и hold.',
+        : 'Задачи подразделения: назначение, согласование и возврат в пул.',
     };
   }
 
