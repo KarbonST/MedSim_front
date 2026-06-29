@@ -1206,10 +1206,13 @@ function App() {
     playerWorkspaceState.workspace
     && playerWorkspaceState.workspace.sessionStatus !== 'LOBBY',
   );
+  const shouldUseWideWorkspaceLayout = Boolean(
+    joinState.session || isFacilitatorWorkspaceOpen,
+  );
 
   return (
-    <main className="page-shell">
-      <section className="form-panel">
+    <main className={shouldUseWideWorkspaceLayout ? 'page-shell page-shell--workspace' : 'page-shell'}>
+      <section className={shouldUseWideWorkspaceLayout ? 'form-panel form-panel--workspace' : 'form-panel'}>
         {joinState.session ? (
           shouldShowPlayerWorkspace && playerWorkspaceState.workspace ? (
             <PlayerTeamWorkspace

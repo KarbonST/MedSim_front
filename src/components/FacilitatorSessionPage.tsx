@@ -229,7 +229,7 @@ function isViewAvailable(view: FacilitatorView, session: GameSessionParticipants
     case 'summary':
       return session !== null;
     case 'control':
-      return session !== null && session.sessionStatus !== 'FINISHED';
+      return session !== null;
     case 'economy':
     case 'teams':
     case 'stages':
@@ -631,18 +631,30 @@ function FacilitatorSessionPage({
         return 'Состав команд';
       case 'chat':
         return 'Чаты команд';
+      case 'control':
+        return session
+          ? (session.sessionStatus === 'FINISHED'
+            ? 'Управление завершенной сессией'
+            : isLobby
+              ? 'Контроль стартовой комнаты'
+              : 'Управление активной игрой')
+          : 'Управление игровыми сессиями';
       case 'summary':
+        return session
+          ? (session.sessionStatus === 'FINISHED'
+            ? 'Сводка завершенной сессии'
+            : isLobby
+              ? 'Контроль стартовой комнаты'
+              : 'Сводка по активной сессии')
+          : 'Управление игровыми сессиями';
       case 'economy':
       case 'teams':
       case 'stages':
       case 'inventory':
-      case 'control':
         return session
-          ? (session.sessionStatus === 'FINISHED'
-            ? 'Аналитика завершенной игры'
-            : isLobby
-              ? 'Контроль стартовой комнаты'
-              : 'Командный дашборд')
+          ? (isLobby
+            ? 'Контроль стартовой комнаты'
+            : 'Командный дашборд')
           : 'Управление игровыми сессиями';
       default:
         return 'Управление игровыми сессиями';
@@ -963,7 +975,9 @@ function FacilitatorSessionPage({
             authHeader={authHeader}
             analytics={analyticsOverview}
             loading={analyticsLoading}
+            actionSessionCode={actionSessionCode}
             onRefreshAnalytics={onRefreshAnalytics}
+            onRestartSession={onRestartSession}
           />
         ) : (
           <div className="waiting-note facilitator-empty-state">

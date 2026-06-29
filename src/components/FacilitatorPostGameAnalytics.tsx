@@ -13,7 +13,9 @@ interface FacilitatorPostGameAnalyticsProps {
   authHeader: string;
   analytics: GameSessionAnalyticsResponse | null;
   loading: boolean;
+  actionSessionCode: string;
   onRefreshAnalytics: (sessionCode: string) => void | Promise<void>;
+  onRestartSession: (sessionCode: string) => void | Promise<void>;
 }
 
 const dateTimeFormatter = new Intl.DateTimeFormat('ru-RU', {
@@ -219,10 +221,13 @@ function FacilitatorPostGameAnalytics({
   authHeader,
   analytics,
   loading,
+  actionSessionCode,
   onRefreshAnalytics,
+  onRestartSession,
 }: FacilitatorPostGameAnalyticsProps) {
   const [downloading, setDownloading] = useState(false);
   const [exportError, setExportError] = useState('');
+  const isRestarting = actionSessionCode === sessionCode;
 
   const handleDownload = async (): Promise<void> => {
     setDownloading(true);
@@ -253,6 +258,14 @@ function FacilitatorPostGameAnalytics({
       defaultExpanded
       actions={(
         <div className="facilitator-postgame-actions">
+          <button
+            type="button"
+            className="secondary-button compact-button"
+            onClick={() => onRestartSession(sessionCode)}
+            disabled={isRestarting}
+          >
+            {isRestarting ? 'Перезапуск...' : 'Начать игру заново'}
+          </button>
           <button
             type="button"
             className="secondary-button compact-button"

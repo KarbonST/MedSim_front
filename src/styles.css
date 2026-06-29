@@ -48,6 +48,10 @@ button {
   padding: 24px;
 }
 
+.page-shell--workspace {
+  padding-inline: clamp(20px, 2.6vw, 40px);
+}
+
 .brand-mark {
   width: fit-content;
   padding: 10px 16px;
@@ -170,6 +174,11 @@ button {
   color: #163127;
   border-radius: 32px;
   box-shadow: 0 24px 60px rgba(3, 10, 7, 0.22);
+}
+
+.form-panel--workspace {
+  width: min(100%, 1680px);
+  padding-inline: clamp(32px, 2.6vw, 48px);
 }
 
 .mode-switch {
