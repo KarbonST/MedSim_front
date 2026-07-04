@@ -195,6 +195,14 @@ function App() {
     }
 
     let isCancelled = false;
+    let timerEndRefreshId: number | null = null;
+
+    const clearTimerEndRefresh = () => {
+      if (timerEndRefreshId != null) {
+        window.clearTimeout(timerEndRefreshId);
+        timerEndRefreshId = null;
+      }
+    };
 
     const loadWorkspace = async (showLoader: boolean): Promise<void> => {
       if (showLoader) {
@@ -215,11 +223,26 @@ function App() {
           return;
         }
 
+        clearTimerEndRefresh();
+
         setPlayerWorkspaceState({
           loading: false,
           error: '',
           workspace: payload,
         });
+
+        if (
+          payload.sessionStatus === 'IN_PROGRESS'
+          && payload.sessionRuntime.timerStatus === 'RUNNING'
+          && payload.sessionRuntime.timerEndsAt
+        ) {
+          const timerEndsAtMs = new Date(payload.sessionRuntime.timerEndsAt).getTime();
+          const refreshDelayMs = Math.max(timerEndsAtMs - Date.now(), 0) + 150;
+
+          timerEndRefreshId = window.setTimeout(() => {
+            void loadWorkspace(false);
+          }, refreshDelayMs);
+        }
       } catch (error) {
         if (isCancelled) {
           return;
@@ -237,10 +260,11 @@ function App() {
 
     const intervalId = window.setInterval(() => {
       void loadWorkspace(false);
-    }, 5000);
+    }, 2000);
 
     return () => {
       isCancelled = true;
+      clearTimerEndRefresh();
       window.clearInterval(intervalId);
     };
   }, [joinState.session]);
@@ -1204,7 +1228,10 @@ function App() {
   const facilitatorError = facilitatorActionError || overviewState.error || sessionsState.error;
   const shouldShowPlayerWorkspace = Boolean(
     playerWorkspaceState.workspace
-    && playerWorkspaceState.workspace.sessionStatus !== 'LOBBY',
+    && (
+      playerWorkspaceState.workspace.sessionStatus === 'IN_PROGRESS'
+      || playerWorkspaceState.workspace.sessionStatus === 'FINISHED'
+    ),
   );
   const shouldUseWideWorkspaceLayout = Boolean(
     joinState.session || isFacilitatorWorkspaceOpen,

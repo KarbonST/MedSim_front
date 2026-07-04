@@ -22,6 +22,8 @@ function SessionWaitingRoom({
   workspaceError,
   onReset,
 }: SessionWaitingRoomProps) {
+  const currentSessionStatus = workspace?.sessionStatus ?? session.sessionStatus;
+  const isPaused = currentSessionStatus === 'PAUSED';
   const teamName = workspace?.teamName ?? 'Команда назначается ведущим';
   const stagesCount = workspace?.stages.length ?? 0;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -64,7 +66,7 @@ function SessionWaitingRoom({
             </article>
             <article className="info-card">
               <span>Статус</span>
-              <strong>{getSessionStatusLabel(workspace?.sessionStatus ?? session.sessionStatus)}</strong>
+              <strong>{getSessionStatusLabel(currentSessionStatus)}</strong>
             </article>
           </div>
         );
@@ -93,8 +95,9 @@ function SessionWaitingRoom({
         return (
           <div className="waiting-note">
             <p>
-              Вы уже в стартовой комнате. После запуска сессии экран автоматически переключится на рабочее пространство
-              вашей команды.
+              {isPaused
+                ? 'Игра поставлена на паузу. Игровые разделы и действия временно заблокированы до возобновления сессии ведущим.'
+                : 'Вы уже в стартовой комнате. После запуска сессии экран автоматически переключится на рабочее пространство вашей команды.'}
             </p>
           </div>
         );
@@ -107,8 +110,8 @@ function SessionWaitingRoom({
     <section className="session-room">
       <BrandHeader
         compact
-        eyebrow="Стартовая комната сессии"
-        title="Подключение выполнено"
+        eyebrow={isPaused ? 'Сессия временно приостановлена' : 'Стартовая комната сессии'}
+        title={isPaused ? 'Игра на паузе' : 'Подключение выполнено'}
         actions={(
           <MenuToggleButton
             expanded={menuOpen}
@@ -122,7 +125,7 @@ function SessionWaitingRoom({
           <p className="section-kicker">Сессия</p>
           <h2>{session.sessionName}</h2>
         </div>
-        <span className="status-pill">{getSessionStatusLabel(workspace?.sessionStatus ?? session.sessionStatus)}</span>
+        <span className="status-pill">{getSessionStatusLabel(currentSessionStatus)}</span>
       </div>
 
       <div className="workspace-page-indicator">

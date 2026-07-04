@@ -951,7 +951,13 @@ function FacilitatorSessionPage({
         );
       case 'roster':
         return session ? (
-          <FacilitatorTeamRosterPanel session={session} />
+          <FacilitatorTeamRosterPanel
+            session={session}
+            teamAssignmentParticipantId={teamAssignmentParticipantId}
+            roleAssignmentParticipantId={roleAssignmentParticipantId}
+            onAssignParticipantTeam={onAssignParticipantTeam}
+            onAssignManualRole={onAssignManualRole}
+          />
         ) : (
           <div className="waiting-note facilitator-empty-state">
             <p>Сначала выберите сессию.</p>

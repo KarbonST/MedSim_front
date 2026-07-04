@@ -81,7 +81,7 @@ function PlayerEntryForm({
                   <div className="session-card-metrics">
                     <span>Игроков внутри: {session.participantCount}</span>
                     {session.sessionStatus !== 'LOBBY' ? (
-                      <span>После старта доступен только повторный вход</span>
+                      <span>После старта новые игроки попадут в нераспределённые</span>
                     ) : null}
                   </div>
                 </button>
@@ -126,7 +126,7 @@ function PlayerEntryForm({
           </p>
           {selectedSession.sessionStatus !== 'LOBBY' ? (
             <p className="waiting-note-inline">
-              Если игра уже началась, войти смогут только участники, которые уже подключались к этой сессии под теми же именем и должностью.
+              Если игра уже началась, вы всё равно сможете подключиться: ведущий увидит вас в нераспределённых и вручную назначит команду и игровую роль.
             </p>
           ) : null}
         </div>
