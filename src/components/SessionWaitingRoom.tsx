@@ -24,6 +24,7 @@ function SessionWaitingRoom({
 }: SessionWaitingRoomProps) {
   const currentSessionStatus = workspace?.sessionStatus ?? session.sessionStatus;
   const isPaused = currentSessionStatus === 'PAUSED';
+  const isFinished = currentSessionStatus === 'FINISHED';
   const teamName = workspace?.teamName ?? 'Команда назначается ведущим';
   const stagesCount = workspace?.stages.length ?? 0;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -95,7 +96,9 @@ function SessionWaitingRoom({
         return (
           <div className="waiting-note">
             <p>
-              {isPaused
+              {isFinished
+                ? 'Игра завершена. Игровые разделы и действия заблокированы. Участник остаётся только на информационном экране до выхода из сессии.'
+                : isPaused
                 ? 'Игра поставлена на паузу. Игровые разделы и действия временно заблокированы до возобновления сессии ведущим.'
                 : 'Вы уже в стартовой комнате. После запуска сессии экран автоматически переключится на рабочее пространство вашей команды.'}
             </p>
@@ -110,8 +113,16 @@ function SessionWaitingRoom({
     <section className="session-room">
       <BrandHeader
         compact
-        eyebrow={isPaused ? 'Сессия временно приостановлена' : 'Стартовая комната сессии'}
-        title={isPaused ? 'Игра на паузе' : 'Подключение выполнено'}
+        eyebrow={isFinished
+          ? 'Сессия завершена'
+          : isPaused
+            ? 'Сессия временно приостановлена'
+            : 'Стартовая комната сессии'}
+        title={isFinished
+          ? 'Игра завершена'
+          : isPaused
+            ? 'Игра на паузе'
+            : 'Подключение выполнено'}
         actions={(
           <MenuToggleButton
             expanded={menuOpen}

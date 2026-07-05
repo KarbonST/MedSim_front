@@ -1272,7 +1272,6 @@ function App() {
     playerWorkspaceState.workspace
     && (
       playerWorkspaceState.workspace.sessionStatus === 'IN_PROGRESS'
-      || playerWorkspaceState.workspace.sessionStatus === 'FINISHED'
     ),
   );
   const shouldUseWideWorkspaceLayout = Boolean(
