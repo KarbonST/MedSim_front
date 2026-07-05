@@ -18,6 +18,7 @@ import {
   writePersistedAppState,
 } from './lib/persistence';
 import {
+  applyGameSessionTeamPenalty,
   assignManualGameRole,
   assignParticipantTeam,
   assignRandomGameRoles,
@@ -106,6 +107,7 @@ function App() {
   const [facilitatorRoleParticipantId, setFacilitatorRoleParticipantId] = useState<number | null>(null);
   const [facilitatorTeamRenameId, setFacilitatorTeamRenameId] = useState<number | null>(null);
   const [facilitatorTeamParticipantId, setFacilitatorTeamParticipantId] = useState<number | null>(null);
+  const [facilitatorPenaltyTeamId, setFacilitatorPenaltyTeamId] = useState<number | null>(null);
   const [facilitatorRemovingParticipantId, setFacilitatorRemovingParticipantId] = useState<number | null>(null);
   const [creatingSession, setCreatingSession] = useState(false);
   const [renamingSession, setRenamingSession] = useState(false);
@@ -628,6 +630,45 @@ function App() {
       );
     } finally {
       setFacilitatorEconomySaving(false);
+    }
+  };
+
+  const handleApplyTeamPenalty = async (
+    sessionCode: string,
+    teamId: number,
+    budgetPenalty: string,
+    timePenalty: number,
+    reason: string,
+  ): Promise<boolean> => {
+    if (!staffAuthHeader) {
+      setFacilitatorActionError('Нужно заново войти под учётной записью ведущего.');
+      return false;
+    }
+
+    setFacilitatorActionError('');
+    setFacilitatorPenaltyTeamId(teamId);
+
+    try {
+      const payload = await applyGameSessionTeamPenalty(
+        sessionCode,
+        teamId,
+        {
+          budgetPenalty,
+          timePenalty,
+          reason,
+        },
+        staffAuthHeader,
+      );
+      setFacilitatorEconomyOverview(payload);
+      await syncAfterSessionMutation(sessionCode);
+      return true;
+    } catch (error) {
+      setFacilitatorActionError(
+        error instanceof Error ? error.message : 'Не удалось применить штраф к команде.',
+      );
+      return false;
+    } finally {
+      setFacilitatorPenaltyTeamId(null);
     }
   };
 
@@ -1210,6 +1251,7 @@ function App() {
     setFacilitatorRoleParticipantId(null);
     setFacilitatorTeamRenameId(null);
     setFacilitatorTeamParticipantId(null);
+    setFacilitatorPenaltyTeamId(null);
     setCreatingSession(false);
     setRenamingSession(false);
     setStaffError('');
@@ -1283,6 +1325,7 @@ function App() {
             inventorySaving={facilitatorInventorySaving}
             randomAssignmentLoading={facilitatorRandomRoleLoading}
             roleAssignmentParticipantId={facilitatorRoleParticipantId}
+            penaltyTeamId={facilitatorPenaltyTeamId}
             removingParticipantId={facilitatorRemovingParticipantId}
             error={facilitatorError}
             session={overviewState.session}
@@ -1302,6 +1345,7 @@ function App() {
             onRandomizeInventory={handleRandomizeInventory}
             onAssignRandomRoles={handleAssignRandomRoles}
             onAssignManualRole={handleAssignManualRole}
+            onApplyTeamPenalty={handleApplyTeamPenalty}
             onSelectRuntimeStage={handleSelectRuntimeStage}
             onStartRuntimeTimer={handleStartRuntimeTimer}
             onPauseRuntimeTimer={handlePauseRuntimeTimer}

@@ -11,6 +11,7 @@ import type {
   GameSessionRuntimeStageRequest,
   GameSessionStageSettingsRequest,
   GameSessionSummary,
+  GameSessionTeamPenaltyRequest,
   GameSessionTeamAssignmentRequest,
   GameSessionTeamRenameRequest,
   SessionParticipantSummary,
@@ -327,6 +328,37 @@ export async function updateGameSessionEconomySettings(
         response.status === 401
           ? 'Нужно заново войти под учётной записью ведущего.'
           : 'Не удалось сохранить стартовый бюджет и ресурс времени. Попробуйте ещё раз.',
+      ),
+    );
+  }
+
+  return response.json() as Promise<GameSessionEconomyResponse>;
+}
+
+export async function applyGameSessionTeamPenalty(
+  sessionCode: string,
+  teamId: number,
+  request: GameSessionTeamPenaltyRequest,
+  authHeader: string,
+): Promise<GameSessionEconomyResponse> {
+  const response = await fetch(
+    `${API_PREFIX}/game-sessions/${encodeURIComponent(sessionCode)}/economy/teams/${teamId}/penalty`,
+    {
+      method: 'PATCH',
+      headers: createAuthorizedHeaders(authHeader, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(
+        response,
+        response.status === 401
+          ? 'Нужно заново войти под учётной записью ведущего.'
+          : 'Не удалось применить штраф к команде. Попробуйте ещё раз.',
       ),
     );
   }

@@ -45,6 +45,7 @@ interface FacilitatorSessionPageProps {
   inventorySaving: boolean;
   randomAssignmentLoading: boolean;
   roleAssignmentParticipantId: number | null;
+  penaltyTeamId: number | null;
   removingParticipantId: number | null;
   error: string;
   session: GameSessionParticipantsResponse | null;
@@ -94,6 +95,13 @@ interface FacilitatorSessionPageProps {
     participantId: number,
     gameRole: string,
   ) => void | Promise<void>;
+  onApplyTeamPenalty: (
+    sessionCode: string,
+    teamId: number,
+    budgetPenalty: string,
+    timePenalty: number,
+    reason: string,
+  ) => Promise<boolean>;
   onSelectRuntimeStage: (sessionCode: string, stageNumber: number) => void | Promise<void>;
   onStartRuntimeTimer: (sessionCode: string) => void | Promise<void>;
   onPauseRuntimeTimer: (sessionCode: string) => void | Promise<void>;
@@ -109,6 +117,16 @@ interface FacilitatorSessionPageProps {
 interface SessionControlPanelProps {
   session: GameSessionParticipantsResponse;
   actionSessionCode: string;
+  economyOverview: GameSessionEconomyResponse | null;
+  economyLoading: boolean;
+  penaltyTeamId: number | null;
+  onApplyTeamPenalty: (
+    sessionCode: string,
+    teamId: number,
+    budgetPenalty: string,
+    timePenalty: number,
+    reason: string,
+  ) => Promise<boolean>;
   onSelectRuntimeStage: (sessionCode: string, stageNumber: number) => void | Promise<void>;
   onStartRuntimeTimer: (sessionCode: string) => void | Promise<void>;
   onPauseRuntimeTimer: (sessionCode: string) => void | Promise<void>;
@@ -137,6 +155,12 @@ interface FacilitatorNavItem {
   id: FacilitatorView;
   label: string;
   description: string;
+}
+
+interface TeamPenaltyDraft {
+  budgetPenalty: string;
+  timePenalty: string;
+  reason: string;
 }
 
 const facilitatorWorkspaceNav: FacilitatorNavItem[] = [
@@ -250,6 +274,10 @@ function isViewAvailable(view: FacilitatorView, session: GameSessionParticipants
 function SessionControlPanel({
   session,
   actionSessionCode,
+  economyOverview,
+  economyLoading,
+  penaltyTeamId,
+  onApplyTeamPenalty,
   onSelectRuntimeStage,
   onStartRuntimeTimer,
   onPauseRuntimeTimer,
@@ -262,6 +290,7 @@ function SessionControlPanel({
   const stages = useMemo(() => sortStages(session.stages), [session.stages]);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [runtimeSyncedAtMs, setRuntimeSyncedAtMs] = useState<number | null>(() => Date.now());
+  const [penaltyDrafts, setPenaltyDrafts] = useState<Record<number, TeamPenaltyDraft>>({});
 
   useEffect(() => {
     setRuntimeSyncedAtMs(Date.now());
@@ -339,9 +368,59 @@ function SessionControlPanel({
   const canFinishGame = session.sessionStatus === 'IN_PROGRESS' || session.sessionStatus === 'PAUSED';
   const canRestartGame = session.sessionStatus !== 'LOBBY';
   const shouldShowTimerTools = session.sessionStatus !== 'LOBBY';
+  const canManagePenalties = session.sessionStatus === 'IN_PROGRESS' || session.sessionStatus === 'PAUSED';
   const isRunning = session.sessionStatus === 'IN_PROGRESS';
   const startButtonLabel = session.sessionStatus === 'PAUSED' ? 'Продолжить игру' : 'Начать игру';
   const startPendingLabel = session.sessionStatus === 'PAUSED' ? 'Возобновление...' : 'Запуск...';
+  const economyTeams = economyOverview?.teams ?? [];
+
+  const updatePenaltyDraft = (
+    teamId: number,
+    field: keyof TeamPenaltyDraft,
+    value: string,
+  ): void => {
+    setPenaltyDrafts((current) => ({
+      ...current,
+      [teamId]: {
+        budgetPenalty: current[teamId]?.budgetPenalty ?? '',
+        timePenalty: current[teamId]?.timePenalty ?? '',
+        reason: current[teamId]?.reason ?? '',
+        [field]: value,
+      },
+    }));
+  };
+
+  const resetPenaltyDraft = (teamId: number): void => {
+    setPenaltyDrafts((current) => ({
+      ...current,
+      [teamId]: {
+        budgetPenalty: '',
+        timePenalty: '',
+        reason: '',
+      },
+    }));
+  };
+
+  const handlePenaltySubmit = async (teamId: number): Promise<void> => {
+    const draft = penaltyDrafts[teamId] ?? { budgetPenalty: '', timePenalty: '', reason: '' };
+    const parsedTimePenalty = Number.parseInt(draft.timePenalty || '0', 10);
+
+    if (Number.isNaN(parsedTimePenalty)) {
+      return;
+    }
+
+    const applied = await onApplyTeamPenalty(
+      session.sessionCode,
+      teamId,
+      draft.budgetPenalty.trim() || '0',
+      parsedTimePenalty,
+      draft.reason.trim(),
+    );
+
+    if (applied) {
+      resetPenaltyDraft(teamId);
+    }
+  };
 
   return (
     <CollapsibleSection
@@ -490,6 +569,133 @@ function SessionControlPanel({
               </button>
             </div>
           </div>
+
+          <div className="session-control-actions-block">
+            <span className="section-kicker">Штрафы команд</span>
+            {!canManagePenalties ? (
+              <p className="participant-role-subtitle">
+                Штрафы доступны только во время активной или приостановленной игры.
+              </p>
+            ) : null}
+            {economyLoading && economyTeams.length === 0 ? (
+              <p className="participant-role-subtitle">Обновляем ресурсы команд...</p>
+            ) : null}
+            {!economyLoading && economyTeams.length === 0 ? (
+              <p className="participant-role-subtitle">Экономика команд пока недоступна.</p>
+            ) : null}
+            {economyTeams.length ? (
+              <div className="session-control-penalty-grid">
+                {economyTeams.map((team) => {
+                  const draft = penaltyDrafts[team.teamId] ?? {
+                    budgetPenalty: '',
+                    timePenalty: '',
+                    reason: '',
+                  };
+                  const parsedBudgetPenalty = Number.parseFloat(draft.budgetPenalty || '0');
+                  const parsedTimePenalty = Number.parseInt(draft.timePenalty || '0', 10);
+                  const hasPenaltyValue =
+                    (!Number.isNaN(parsedBudgetPenalty) && parsedBudgetPenalty > 0)
+                    || (!Number.isNaN(parsedTimePenalty) && parsedTimePenalty > 0);
+                  const isPenaltyPending = penaltyTeamId === team.teamId;
+
+                  return (
+                    <article key={team.teamId} className="session-control-penalty-card">
+                      <div className="facilitator-dashboard-summary-header">
+                        <div>
+                          <span className="section-kicker">Команда</span>
+                          <h3>{team.teamName}</h3>
+                        </div>
+                        <span className="status-pill subtle-status-pill">
+                          Этап {session.sessionRuntime.activeStageNumber ?? '—'}
+                        </span>
+                      </div>
+
+                      <div className="session-control-penalty-metrics">
+                        <article className="info-card">
+                          <span>Текущий бюджет</span>
+                          <strong>{Number(team.currentBalance).toFixed(2)}</strong>
+                        </article>
+                        <article className="info-card">
+                          <span>Время этапа</span>
+                          <strong>{team.currentStageTimeUnits}</strong>
+                        </article>
+                        <article className="info-card">
+                          <span>Доступно с резервом</span>
+                          <strong>{Number(team.availableBalance).toFixed(2)}</strong>
+                        </article>
+                        <article className="info-card">
+                          <span>Доступно времени</span>
+                          <strong>{team.availableStageTimeUnits}</strong>
+                        </article>
+                      </div>
+
+                      <div className="session-control-penalty-form">
+                        <div className="session-control-penalty-form-row">
+                          <label className="field compact-field">
+                            <span>Штраф по деньгам</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={draft.budgetPenalty}
+                              onChange={(event: ChangeEvent<HTMLInputElement>) => updatePenaltyDraft(team.teamId, 'budgetPenalty', event.target.value)}
+                              disabled={!canManagePenalties || isPenaltyPending}
+                            />
+                          </label>
+                          <label className="field compact-field">
+                            <span>Штраф по времени</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              placeholder="0"
+                              value={draft.timePenalty}
+                              onChange={(event: ChangeEvent<HTMLInputElement>) => updatePenaltyDraft(team.teamId, 'timePenalty', event.target.value)}
+                              disabled={!canManagePenalties || isPenaltyPending}
+                            />
+                          </label>
+                        </div>
+
+                        <label className="field compact-field">
+                          <span>Причина штрафа</span>
+                          <input
+                            type="text"
+                            maxLength={300}
+                            placeholder="Например, нарушение регламента"
+                            value={draft.reason}
+                            onChange={(event: ChangeEvent<HTMLInputElement>) => updatePenaltyDraft(team.teamId, 'reason', event.target.value)}
+                            disabled={!canManagePenalties || isPenaltyPending}
+                          />
+                        </label>
+
+                        <div className="session-control-actions-row">
+                          <button
+                            type="button"
+                            className="danger-button compact-button"
+                            onClick={() => {
+                              void handlePenaltySubmit(team.teamId);
+                            }}
+                            disabled={!canManagePenalties || isPenaltyPending || !hasPenaltyValue}
+                          >
+                            {isPenaltyPending ? 'Списание...' : 'Выписать штраф'}
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-button compact-button"
+                            onClick={() => resetPenaltyDraft(team.teamId)}
+                            disabled={isPenaltyPending || (!draft.budgetPenalty && !draft.timePenalty && !draft.reason)}
+                          >
+                            Очистить
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </CollapsibleSection>
@@ -518,6 +724,7 @@ function FacilitatorSessionPage({
   inventorySaving,
   randomAssignmentLoading,
   roleAssignmentParticipantId,
+  penaltyTeamId,
   removingParticipantId,
   error,
   session,
@@ -537,6 +744,7 @@ function FacilitatorSessionPage({
   onRandomizeInventory,
   onAssignRandomRoles,
   onAssignManualRole,
+  onApplyTeamPenalty,
   onSelectRuntimeStage,
   onStartRuntimeTimer,
   onPauseRuntimeTimer,
@@ -922,6 +1130,10 @@ function FacilitatorSessionPage({
           <SessionControlPanel
             session={session}
             actionSessionCode={actionSessionCode}
+            economyOverview={economyOverview}
+            economyLoading={economyLoading}
+            penaltyTeamId={penaltyTeamId}
+            onApplyTeamPenalty={onApplyTeamPenalty}
             onSelectRuntimeStage={onSelectRuntimeStage}
             onStartRuntimeTimer={onStartRuntimeTimer}
             onPauseRuntimeTimer={onPauseRuntimeTimer}

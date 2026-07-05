@@ -311,6 +311,7 @@ export interface TeamEconomyEventItem {
     | 'TASK_RESOURCES_RESERVED'
     | 'TASK_RESERVATION_RELEASED'
     | 'TASK_RESERVATION_COMMITTED'
+    | 'FACILITATOR_PENALTY'
     | 'STAGE_SETTLED';
   stageNumber: number | null;
   amountDelta: number;
@@ -482,6 +483,12 @@ export interface GameSessionAnalyticsResponse {
 export interface GameSessionEconomySettingsUpdateRequest {
   startingBudget: string;
   stageTimeUnits: number;
+}
+
+export interface GameSessionTeamPenaltyRequest {
+  budgetPenalty: string;
+  timePenalty: number;
+  reason: string;
 }
 
 export interface GameSessionCreateRequest {
