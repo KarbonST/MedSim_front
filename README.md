@@ -9,7 +9,7 @@ Frontend-часть платформы `MedSim` для учебной ролев
 Полный стек запускается из backend-репозитория, потому что там лежит общий `docker-compose.yml`.
 
 ```bash
-cd /Users/mihailbykadorov/Desktop/MedSim/MedSim_back
+cd /Users/Karbon/Desktop/MedSim/MedSim_back
 cp .env.example .env
 docker compose --env-file .env up --build -d
 ```
@@ -21,7 +21,7 @@ docker compose --env-file .env up --build -d
 Остановка:
 
 ```bash
-cd /Users/mihailbykadorov/Desktop/MedSim/MedSim_back
+cd /Users/Karbon/Desktop/MedSim/MedSim_back
 docker compose down
 ```
 
@@ -30,7 +30,7 @@ docker compose down
 Backend должен быть запущен отдельно на `http://127.0.0.1:8080`.
 
 ```bash
-cd /Users/mihailbykadorov/Desktop/MedSim/MedSim_front
+cd /Users/Karbon/Desktop/MedSim/MedSim_front
 npm install
 npm run dev
 ```
@@ -42,7 +42,7 @@ Vite dev server обычно открывается на:
 ## Сборка
 
 ```bash
-cd /Users/mihailbykadorov/Desktop/MedSim/MedSim_front
+cd /Users/Karbon/Desktop/MedSim/MedSim_front
 npm run build
 ```
 
@@ -65,15 +65,15 @@ VITE_API_BASE_URL=http://localhost:8080
 
 ### Игрок
 
-- Ввод имени, реальной должности и кода комнаты.
+- Ввод имени и реальной должности.
 - Список доступных сессий для подключения.
 - Повторный вход в уже начатую игру по тем же имени, должности и коду.
 - Комната ожидания до старта.
 - Автоматический переход в рабочее пространство команды после запуска.
-- Отдельный workspace только своей команды без чужих составов.
-- Компактный верхний блок с этапом, режимом и таймером.
-- Командный чат с историей и `WebSocket`-обновлениями.
-- Блок уведомлений по канбану и короткий верхний баннер при новых уведомлениях.
+- Отдельное пространство только своей команды без чужих составов.
+- Блок с этапом, режимом и таймером.
+- Командный чат с историей и обновлениями в реальном времени.
+- Блок уведомлений по канбану и верхний баннер при новых уведомлениях.
 - Просмотр канбан-карточек текущего этапа.
 - Переключатель видимости: только свои карточки или все доступные карточки команды.
 - Мобильная канбан-доска по одной колонке за раз со стрелками переключения.
@@ -99,11 +99,9 @@ VITE_API_BASE_URL=http://localhost:8080
 - Ручное распределение количества задач по этапам.
 - Настройка стартового склада до старта.
 - Случайная генерация общего стартового склада для всех команд.
-- Read-only мониторинг команд после старта.
+- Мониторинг команд после старта.
 - Просмотр состава, чатов, экономики, плана проблем и канбан-доски выбранной команды.
 - Управление активным этапом и общим таймером.
-
-Суперпользователь пока остается UI-заглушкой: входной режим есть, полноценный экран еще не реализован.
 
 ## Игровые Экраны
 
@@ -154,48 +152,6 @@ VITE_API_BASE_URL=http://localhost:8080
 - polling состояния сессии и workspace
 - `WebSocket` для realtime-чата
 - `Nginx` для Docker-сборки
-
-## Структура Проекта
-
-```text
-src
-├── components
-│   ├── BrandHeader.tsx
-│   ├── ChiefDoctorHospitalPlan.tsx
-│   ├── CollapsibleSection.tsx
-│   ├── FacilitatorLiveDashboard.tsx
-│   ├── FacilitatorSessionPage.tsx
-│   ├── ModeSwitch.tsx
-│   ├── PlayerEntryForm.tsx
-│   ├── PlayerTeamWorkspace.tsx
-│   ├── SessionSetupPanel.tsx
-│   ├── SessionWaitingRoom.tsx
-│   ├── StaffLoginForm.tsx
-│   └── TeamChatFeed.tsx
-├── constants
-├── hooks
-├── lib
-├── services
-│   ├── gameSessionsApi.ts
-│   ├── playerSessionsApi.ts
-│   ├── staffAuthApi.ts
-│   └── teamChatsApi.ts
-├── types
-│   └── app.ts
-├── App.tsx
-├── main.tsx
-└── styles.css
-```
-
-## Важные Файлы
-
-- `src/App.tsx` — верхний сценарий приложения и связь экранов.
-- `src/components/PlayerTeamWorkspace.tsx` — рабочее пространство игрока.
-- `src/components/SessionSetupPanel.tsx` — настройка команд, ролей, этапов, распределения задач и склада.
-- `src/components/FacilitatorLiveDashboard.tsx` — мониторинг команд после старта.
-- `src/services/gameSessionsApi.ts` — запросы панели ведущего.
-- `src/services/playerSessionsApi.ts` — запросы игрока и канбан-действия.
-- `src/types/app.ts` — общие типы frontend.
 
 ## Тестовый Ведущий
 
